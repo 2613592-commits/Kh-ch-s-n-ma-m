@@ -1,0 +1,3175 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Khách Sạn Ma Ám - Haunted Hotel</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+
+  :root {
+    --bg-dark: #09080f;
+    --panel-bg: #141221;
+    --border-color: #4a3f6b;
+    --accent-purple: #b84dff;
+    --accent-red: #ff3b5c;
+    --accent-cyan: #00f0ff;
+    --accent-gold: #ffd700;
+    --accent-green: #2ecc71;
+    --text-main: #f0ecf9;
+  }
+
+  * {
+    box-sizing: border-box;
+    user-select: none;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'VT323', monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  #game-wrapper {
+    position: relative;
+    width: 960px;
+    height: 640px;
+    border: 4px solid var(--border-color);
+    box-shadow: 0 0 35px rgba(138, 43, 226, 0.35);
+    background: #000;
+    overflow: hidden;
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+  }
+
+  /* HUD Overlay */
+  #hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(8,7,14,0.92) 0%, rgba(8,7,14,0) 100%);
+    z-index: 5;
+  }
+
+  .hud-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .hud-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 21px;
+    text-shadow: 2px 2px 0 #000;
+  }
+
+  .hearts {
+    color: var(--accent-red);
+    font-size: 22px;
+    letter-spacing: 2px;
+  }
+
+  .badge {
+    padding: 2px 8px;
+    background: rgba(25, 21, 43, 0.9);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 18px;
+  }
+
+  .badge-purple { color: #d580ff; border-color: #9b30ff; }
+  .badge-gold { color: var(--accent-gold); border-color: #b39700; }
+  .badge-cyan { color: var(--accent-cyan); border-color: #0099aa; }
+  .badge-red { color: #ff6b81; border-color: #c0392b; }
+
+  #weapon-hud {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(18, 15, 34, 0.92);
+    border: 1px solid #6c5ce7;
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-size: 18px;
+  }
+
+  .rarity-common { color: #dcdde1; }
+  .rarity-rare { color: #00a8ff; }
+  .rarity-epic { color: #c56cf0; }
+  .rarity-legendary { color: #fffa65; text-shadow: 0 0 6px #ff9f1a; }
+
+  #skill-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 17px;
+  }
+  .skill-pill {
+    width: 90px;
+    height: 10px;
+    background: #222;
+    border: 1px solid #666;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  #skill-fill {
+    height: 100%;
+    width: 100%;
+    background: #00f0ff;
+    transition: width 0.08s;
+  }
+
+  #buff-bars {
+    display: flex;
+    gap: 10px;
+    margin-top: 2px;
+  }
+
+  .buff-pill {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 17px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid #fff;
+  }
+
+  /* Boss Bar */
+  #boss-hud {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 620px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(15, 8, 22, 0.9);
+    border: 2px solid #ff3b5c;
+    border-radius: 6px;
+    padding: 6px 12px;
+    z-index: 6;
+    box-shadow: 0 0 20px rgba(255, 59, 92, 0.5);
+  }
+  #boss-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    font-size: 20px;
+    color: #ff8fa3;
+    margin-bottom: 4px;
+    text-shadow: 1px 1px 0 #000;
+  }
+  #boss-hp-bg {
+    width: 100%;
+    height: 16px;
+    background: #2b0912;
+    border: 1px solid #ff3b5c;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  #boss-hp-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #ff1e42, #ff7b00);
+    transition: width 0.1s;
+  }
+
+  /* Screens / Modals */
+  .screen-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(9, 8, 16, 0.94);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 22px;
+    text-align: center;
+    z-index: 10;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  h1 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 26px;
+    color: var(--accent-purple);
+    text-shadow: 3px 3px 0 #2d0b4e, 0 0 15px rgba(184, 77, 255, 0.7);
+    margin: 0 0 8px 0;
+    line-height: 1.3;
+  }
+
+  h2 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 20px;
+    color: var(--accent-gold);
+    margin: 0 0 10px 0;
+  }
+
+  p.subtitle {
+    font-size: 20px;
+    color: #c4bddb;
+    max-width: 780px;
+    margin: 0 0 14px 0;
+    line-height: 1.35;
+  }
+
+  /* Class Selection */
+  .class-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    width: 100%;
+    max-width: 820px;
+    margin-bottom: 14px;
+  }
+
+  .class-card {
+    background: #171429;
+    border: 2px solid #3f3663;
+    border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+  }
+  .class-card:hover { border-color: #9b59b6; transform: translateY(-2px); }
+  .class-card.selected {
+    border-color: var(--accent-cyan);
+    background: #1e2340;
+    box-shadow: 0 0 14px rgba(0, 240, 255, 0.35);
+  }
+  .class-title {
+    font-size: 21px;
+    font-weight: bold;
+    color: var(--accent-gold);
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .class-desc {
+    font-size: 16px;
+    color: #cbd5e1;
+    line-height: 1.3;
+  }
+
+  /* Difficulty cards */
+  .diff-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    width: 100%;
+    max-width: 820px;
+    margin-bottom: 12px;
+  }
+
+  .diff-card {
+    background: var(--panel-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .diff-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent-purple);
+  }
+
+  .diff-card.selected {
+    border-color: var(--accent-gold);
+    background: #201a38;
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.35);
+  }
+
+  .diff-title {
+    font-size: 21px;
+    font-weight: bold;
+    margin-bottom: 3px;
+  }
+
+  .diff-stats {
+    font-size: 17px;
+    color: #b5aec9;
+    line-height: 1.25;
+  }
+
+  .challenge-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 59, 92, 0.15);
+    border: 1px solid var(--accent-red);
+    padding: 6px 16px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    font-size: 19px;
+    color: #ff8fa3;
+  }
+
+  .challenge-toggle input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent-red);
+    cursor: pointer;
+  }
+
+  .controls-info {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+    background: rgba(255,255,255,0.04);
+    padding: 8px 14px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+    font-size: 17px;
+    color: #d0c9e6;
+  }
+
+  .key {
+    display: inline-block;
+    padding: 1px 6px;
+    background: #2b2542;
+    border: 1px solid #6b5ea3;
+    border-radius: 4px;
+    color: #fff;
+    font-weight: bold;
+  }
+
+  .btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 15px;
+    padding: 12px 24px;
+    background: linear-gradient(180deg, #8e2de2 0%, #4a00e0 100%);
+    color: #fff;
+    border: 2px solid #d49eff;
+    border-radius: 6px;
+    cursor: pointer;
+    text-shadow: 2px 2px 0 #000;
+    transition: transform 0.1s, filter 0.15s;
+  }
+
+  .btn:hover:not(:disabled) {
+    filter: brightness(1.18);
+    transform: scale(1.03);
+  }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .btn-gold {
+    background: linear-gradient(180deg, #f39c12 0%, #d35400 100%);
+    border-color: #ffeaa7;
+  }
+
+  .btn-cyan {
+    background: linear-gradient(180deg, #00b4db 0%, #0083b0 100%);
+    border-color: #81ecec;
+  }
+
+  /* Upgrade & Gacha Shop */
+  .upgrade-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    width: 100%;
+    max-width: 780px;
+    margin: 14px 0;
+  }
+
+  .upgrade-card {
+    background: var(--panel-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .upgrade-card h3 {
+    margin: 0 0 6px 0;
+    font-size: 21px;
+    color: var(--accent-cyan);
+  }
+
+  .upgrade-card p {
+    font-size: 17px;
+    color: #bdb6d4;
+    margin: 0 0 10px 0;
+  }
+
+  .btn-small {
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+    padding: 6px 10px;
+    background: #2b2447;
+    color: var(--accent-gold);
+    border: 1px solid var(--accent-gold);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .btn-small:hover:not(:disabled) {
+    background: var(--accent-gold);
+    color: #000;
+  }
+
+  .btn-small:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Gacha Wheel Modal */
+  #gacha-modal {
+    background: rgba(7, 6, 14, 0.96);
+    z-index: 20;
+  }
+
+  .wheel-container {
+    position: relative;
+    width: 320px;
+    height: 320px;
+    margin: 10px auto 14px auto;
+  }
+
+  #wheel-pointer {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    border-top: 26px solid #ffd700;
+    filter: drop-shadow(0 2px 4px #000);
+    z-index: 5;
+  }
+
+  #wheel-canvas {
+    width: 320px;
+    height: 320px;
+    border-radius: 50%;
+    border: 5px solid #ffd700;
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.45);
+  }
+
+  #gacha-result-box {
+    min-height: 54px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid #554880;
+    border-radius: 6px;
+    padding: 8px 18px;
+    margin-bottom: 12px;
+    font-size: 20px;
+    max-width: 600px;
+  }
+
+  /* Floating Banner */
+  #banner-msg {
+    position: absolute;
+    top: 95px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 10, 30, 0.92);
+    border: 2px solid var(--accent-purple);
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-size: 22px;
+    color: #fff;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 8;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .summary-box {
+    background: var(--panel-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 14px 26px;
+    margin: 14px 0 20px 0;
+    font-size: 23px;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<div id="game-wrapper">
+  <canvas id="gameCanvas" width="960" height="640"></canvas>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div class="hud-group">
+      <div class="hud-row">
+        <span id="hud-hearts" class="hearts">❤️❤️❤️</span>
+        <span id="hud-floor" class="badge badge-cyan">TẦNG 6 - MÊ CUNG</span>
+        <span id="hud-gems" class="badge badge-purple">💎 0/40</span>
+      </div>
+      <div id="weapon-hud">
+        <span id="hud-class-icon">🔫</span>
+        <span id="hud-weapon-name" class="rarity-common">Súng Lục Bạc</span>
+        <span>|</span>
+        <div id="skill-bar-wrap">
+          <span id="hud-skill-key" style="color:#00f0ff;">[E] Kỹ năng:</span>
+          <div class="skill-pill"><div id="skill-fill"></div></div>
+        </div>
+      </div>
+      <div id="buff-bars">
+        <div id="buff-shield" class="buff-pill" style="border-color:#00f0ff; color:#00f0ff;">
+          🛡️ Bất tử: <span id="shield-time">10.0s</span>
+        </div>
+        <div id="buff-speed" class="buff-pill" style="border-color:#ff4757; color:#ff6b81;">
+          ⚡ Tăng tốc: <span id="speed-time">5.0s</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud-group" style="align-items: flex-end;">
+      <div class="hud-row">
+        <span id="hud-tickets" class="badge badge-gold">🎟️ Vé Quay: 1</span>
+        <span id="hud-score" class="badge badge-gold">ĐIỂM: 0</span>
+      </div>
+      <div class="hud-row" style="font-size: 16px; color: #c4bddb;">
+        <span id="hud-objective">Thu thập đủ ngọc tím để mở cửa phòng Boss!</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Boss HP Bar -->
+  <div id="boss-hud">
+    <div id="boss-header">
+      <span id="boss-name">👹 QUẢN GIA BÓNG ĐÊM</span>
+      <span id="boss-phase-tag" style="color:#ffd700;">GIAI ĐOẠN 1</span>
+    </div>
+    <div id="boss-hp-bg"><div id="boss-hp-fill"></div></div>
+  </div>
+
+  <div id="banner-msg"></div>
+
+  <!-- START SCREEN -->
+  <div id="start-screen" class="screen-overlay">
+    <h1>KHÁCH SẠN MA ÁM</h1>
+    <p class="subtitle">
+      Vượt qua 6 tầng khách sạn ma ám. Mỗi tầng đều có <strong>Phòng Đấu Boss</strong> cùng <strong>Trụ Thánh & Rương Tiếp Tế</strong> hỗ trợ!
+    </p>
+
+    <!-- Class Selector -->
+    <div class="class-grid">
+      <div class="class-card selected" data-class="gunner" onclick="selectClass('gunner')">
+        <div class="class-title"><span>🔫 Xạ Thủ</span><span style="font-size:15px;color:#00f0ff;">Tầm xa</span></div>
+        <div class="class-desc">Dùng các loại súng (Lục, Shotgun, Tiểu Liên, Plasma).<br><strong>[E / Chuột Phải]:</strong> Lướt nhanh né đạn.</div>
+      </div>
+      <div class="class-card" data-class="warrior" onclick="selectClass('warrior')">
+        <div class="class-title"><span>⚔️ Chiến Binh</span><span style="font-size:15px;color:#ff6b81;">Kiếm & Khiên</span></div>
+        <div class="class-desc">Chém vòng cung rộng phá hủy đạn địch.<br><strong>[E / Chuột Phải]:</strong> Giơ Khiên chặn & phản đòn.</div>
+      </div>
+      <div class="class-card" data-class="mage" onclick="selectClass('mage')">
+        <div class="class-title"><span>🔮 Pháp Sư</span><span style="font-size:15px;color:#d580ff;">Gậy & Bùa</span></div>
+        <div class="class-desc">Bắn hỏa cầu nổ, băng làm chậm, sét & bùa truy đuổi.<br><strong>[E / Chuột Phải]:</strong> Bùa Hộ Mệnh đẩy lùi quái.</div>
+      </div>
+    </div>
+
+    <!-- Difficulty Selector -->
+    <div class="diff-grid">
+      <div class="diff-card" data-diff="easy" onclick="selectDiff('easy')">
+        <div class="diff-title" style="color:#2ecc71;">DỄ</div>
+        <div class="diff-stats">❤️ 4 Tim | 💎 30 Ngọc | 👻 3 Ma (100%)</div>
+      </div>
+      <div class="diff-card selected" data-diff="normal" onclick="selectDiff('normal')">
+        <div class="diff-title" style="color:#ffd700;">TRUNG BÌNH</div>
+        <div class="diff-stats">❤️ 3 Tim | 💎 40 Ngọc | 👻 4 Ma (100%)</div>
+      </div>
+      <div class="diff-card" data-diff="hard" onclick="selectDiff('hard')">
+        <div class="diff-title" style="color:#ff3b5c;">KHÓ</div>
+        <div class="diff-stats">❤️ 2 Tim | 💎 50 Ngọc | 👻 4 Ma (115%)</div>
+      </div>
+    </div>
+
+    <label class="challenge-toggle">
+      <input type="checkbox" id="one-life-checkbox">
+      <span>💀 Chế độ Sinh Tử (1 Mạng duy nhất: Trúng đòn hoặc rơi vực = Game Over ngay)</span>
+    </label>
+
+    <div class="controls-info">
+      <span><span class="key">W A S D</span> Di chuyển / Nhảy</span>
+      <span><span class="key">Chuột Trái</span> / <span class="key">Space</span> Tấn công</span>
+      <span><span class="key">E</span> / <span class="key">Chuột Phải</span> Kỹ năng / Khiên</span>
+      <span><span class="key">R</span> Vòng Quay Vũ Khí</span>
+    </div>
+
+    <button class="btn" onclick="startGame()">BẮT ĐẦU KHÁM PHÁ</button>
+  </div>
+
+  <!-- GACHA WHEEL MODAL -->
+  <div id="gacha-modal" class="screen-overlay hidden">
+    <h2>🎡 VÒNG QUAY VŨ KHÍ HUYỀN BÍ</h2>
+    <p class="subtitle" style="margin-bottom:4px;">Quay ngẫu nhiên Súng, Kiếm, Khiên Năng Lượng, Gậy Phép & Bùa Trừ Tà!</p>
+    <div id="gacha-tickets-display" style="font-size:21px; color:#ffd700; margin-bottom:4px;">🎟️ Vé quay hiện có: 1 | 💰 Điểm: 0</div>
+
+    <div class="wheel-container">
+      <div id="wheel-pointer"></div>
+      <canvas id="wheel-canvas" width="320" height="320"></canvas>
+    </div>
+
+    <div id="gacha-result-box">Nhấn nút bên dưới để quay vũ khí mới!</div>
+
+    <div style="display:flex; gap:14px;">
+      <button id="btn-spin-ticket" class="btn btn-gold" onclick="spinWheel('ticket')">QUAY BẰNG VÉ (1 🎟️)</button>
+      <button id="btn-spin-score" class="btn btn-cyan" onclick="spinWheel('score')">QUAY BẰNG ĐIỂM (250 💰)</button>
+      <button id="btn-close-gacha" class="btn" onclick="closeGachaModal()">TIẾP TỤC CHƠI</button>
+    </div>
+  </div>
+
+  <!-- UPGRADE SCREEN (BETWEEN FLOORS) -->
+  <div id="upgrade-screen" class="screen-overlay hidden">
+    <h2 id="upgrade-title">ĐÃ TIÊU DIỆT BOSS TẦNG 6!</h2>
+    <p class="subtitle" id="upgrade-sub">Sử dụng điểm thưởng để nâng cấp sức mạnh hoặc quay vũ khí trước khi xuống tầng sâu hơn.</p>
+    <div id="upgrade-points-display" style="font-size: 24px; color: var(--accent-gold);">Điểm hiện có: 0</div>
+
+    <div class="upgrade-grid">
+      <div class="upgrade-card">
+        <h3>⚔️ Cường Hóa Sát Thương</h3>
+        <p id="upg-dmg-desc">Tăng sát thương vũ khí & chiêu thức.<br>Cấp hiện tại: 1</p>
+        <button id="btn-upg-dmg" class="btn-small" onclick="buyUpgrade('dmg')">Nâng cấp (150 điểm)</button>
+      </div>
+      <div class="upgrade-card">
+        <h3>⚡ Tốc Độ & Hồi Chiêu</h3>
+        <p id="upg-spd-desc">Tăng tốc độ đánh & giảm hồi chiêu kỹ năng.<br>Cấp hiện tại: 1</p>
+        <button id="btn-upg-spd" class="btn-small" onclick="buyUpgrade('spd')">Nâng cấp (150 điểm)</button>
+      </div>
+      <div class="upgrade-card">
+        <h3>❤️ Hồi Phục Sinh Lực</h3>
+        <p id="upg-hp-desc">Hồi lại 1 Tim đã mất (Không vượt quá tối đa).</p>
+        <button id="btn-upg-hp" class="btn-small" onclick="buyUpgrade('hp')">Hồi 1 Tim (200 điểm)</button>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:16px;">
+      <button class="btn btn-gold" onclick="openGachaFromUpgrade()">🎡 VÒNG QUAY VŨ KHÍ</button>
+      <button class="btn" onclick="proceedNextFloor()">XUỐNG TẦNG TIẾP THEO ⬇️</button>
+    </div>
+  </div>
+
+  <!-- GAME OVER SCREEN -->
+  <div id="gameover-screen" class="screen-overlay hidden">
+    <h1 style="color: var(--accent-red); text-shadow: 3px 3px 0 #3b000c;">GAME OVER</h1>
+    <p id="gameover-reason" class="subtitle">Bạn đã bị bóng tối của khách sạn nuốt chửng...</p>
+    <div class="summary-box" id="gameover-stats"></div>
+    <button class="btn" onclick="resetToMenu()">CHƠI LẠI TỪ ĐẦU</button>
+  </div>
+
+  <!-- VICTORY SCREEN -->
+  <div id="victory-screen" class="screen-overlay hidden">
+    <h1 style="color: var(--accent-gold); text-shadow: 3px 3px 0 #4a3500;">THOÁT HIỂM THÀNH CÔNG!</h1>
+    <p class="subtitle">Bạn đã đánh bại Chúa Tể Khách Sạn và bước ra khỏi cánh cửa Tầng 1!</p>
+    <div class="summary-box" id="victory-stats"></div>
+    <button class="btn btn-gold" onclick="resetToMenu()">CHƠI LẠI MÀN MỚI</button>
+  </div>
+</div>
+
+<script>
+/**
+ * ============================================================================
+ * 1. SOUND ENGINE (Web Audio API Retro Synthesizer)
+ * ============================================================================
+ */
+const Sound = {
+  ctx: null,
+  init() {
+    if (!this.ctx) {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+  },
+  playTone(freq, type, duration, vol = 0.12, slideTo = null) {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+    if (slideTo) {
+      osc.frequency.exponentialRampToValueAtTime(slideTo, this.ctx.currentTime + duration);
+    }
+    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + duration);
+  },
+  shoot() { this.playTone(540, 'square', 0.1, 0.08, 170); },
+  sword() { this.playTone(320, 'sawtooth', 0.14, 0.11, 90); },
+  magic() { this.playTone(680, 'sine', 0.18, 0.11, 280); },
+  shieldBlock() { this.playTone(880, 'triangle', 0.15, 0.14, 1320); },
+  turretLaser() { this.playTone(950, 'sawtooth', 0.25, 0.14, 220); },
+  jump() { this.playTone(230, 'sine', 0.16, 0.1, 520); },
+  gem() { this.playTone(760, 'sine', 0.11, 0.1, 1140); },
+  powerup() {
+    this.playTone(440, 'triangle', 0.12, 0.12, 660);
+    setTimeout(() => this.playTone(660, 'triangle', 0.2, 0.12, 990), 90);
+  },
+  enemyHit() { this.playTone(200, 'sawtooth', 0.1, 0.1, 80); },
+  enemyDie() { this.playTone(300, 'square', 0.22, 0.12, 60); },
+  bossRoar() {
+    this.playTone(130, 'sawtooth', 0.45, 0.18, 55);
+    setTimeout(() => this.playTone(110, 'square', 0.4, 0.16, 45), 150);
+  },
+  playerHurt() { this.playTone(160, 'sawtooth', 0.35, 0.18, 45); },
+  doorOpen() {
+    this.playTone(330, 'triangle', 0.15, 0.12);
+    setTimeout(() => this.playTone(440, 'triangle', 0.15, 0.12), 120);
+    setTimeout(() => this.playTone(660, 'triangle', 0.3, 0.14), 240);
+  },
+  tick() { this.playTone(600, 'sine', 0.04, 0.07); },
+  win() {
+    const notes = [523, 659, 784, 1046];
+    notes.forEach((n, i) => setTimeout(() => this.playTone(n, 'triangle', 0.25, 0.15), i * 140));
+  }
+};
+
+/**
+ * ============================================================================
+ * 2. WEAPON CATALOG, CLASSES & GACHA WHEEL DATA
+ * ============================================================================
+ */
+const WEAPONS = {
+  // GUNS
+  silver_pistol: {
+    id: 'silver_pistol', name: 'Súng Lục Bạc', classType: 'gunner', rarity: 'common',
+    dmg: 22, cooldown: 0.26, speed: 660, count: 1, spread: 0, color: '#00f0ff', size: 5,
+    desc: 'Súng tiêu chuẩn tốc độ ổn định.'
+  },
+  ghost_shotgun: {
+    id: 'ghost_shotgun', name: 'Súng Săn 5 Tia', classType: 'gunner', rarity: 'rare',
+    dmg: 16, cooldown: 0.55, speed: 600, count: 5, spread: 0.36, color: '#ff9f43', size: 5,
+    desc: 'Bắn 5 viên đạn tỏa hình nón cực mạnh ở cự ly gần.'
+  },
+  phantom_smg: {
+    id: 'phantom_smg', name: 'Tiểu Liên Ma Thuật', classType: 'gunner', rarity: 'epic',
+    dmg: 15, cooldown: 0.11, speed: 740, count: 1, spread: 0.12, color: '#c56cf0', size: 4,
+    desc: 'Tốc độ xả đạn siêu thanh.'
+  },
+  plasma_cannon: {
+    id: 'plasma_cannon', name: 'Đại Bác Plasma', classType: 'gunner', rarity: 'legendary',
+    dmg: 68, cooldown: 0.58, speed: 540, count: 1, spread: 0, color: '#fffa65', size: 11, explosive: 75,
+    desc: 'Bắn cầu năng lượng nổ lan diện rộng!'
+  },
+
+  // SWORDS & SHIELDS
+  iron_sword: {
+    id: 'iron_sword', name: 'Kiếm Thép & Khiên Gỗ', classType: 'warrior', rarity: 'common',
+    dmg: 38, cooldown: 0.34, range: 78, arc: 2.1, color: '#dfe6e9', shieldMult: 1.0,
+    desc: 'Chém vòng cung phía trước, phá hủy đạn địch.'
+  },
+  flame_greatsword: {
+    id: 'flame_greatsword', name: 'Đại Đao Hỏa Ngục', classType: 'warrior', rarity: 'rare',
+    dmg: 58, cooldown: 0.42, range: 98, arc: 2.5, color: '#ff5252', burn: true, shieldMult: 1.2,
+    desc: 'Tầm chém rộng rực lửa gây sát thương cao.'
+  },
+  aegis_blade: {
+    id: 'aegis_blade', name: 'Kiếm Khiên Hộ Vệ', classType: 'warrior', rarity: 'epic',
+    dmg: 52, cooldown: 0.32, range: 92, arc: 2.4, color: '#00d2d3', shieldMult: 1.6, wave: true,
+    desc: 'Mỗi nhát chém phóng kèm sóng xung kích tầm ngắn.'
+  },
+  excalibur: {
+    id: 'excalibur', name: 'Thánh Kiếm Ánh Sáng', classType: 'warrior', rarity: 'legendary',
+    dmg: 78, cooldown: 0.30, range: 110, arc: 2.7, color: '#fffa65', wave: true, waveBig: true, shieldMult: 2.0,
+    desc: 'Chém cực rộng và phóng kiếm khí xuyên thấu kẻ địch!'
+  },
+
+  // STAFFS & TALISMANS
+  fire_staff: {
+    id: 'fire_staff', name: 'Gậy Hỏa Cầu', classType: 'mage', rarity: 'common',
+    dmg: 32, cooldown: 0.38, speed: 520, color: '#ff6b6b', size: 8, explosive: 58,
+    desc: 'Bắn cầu lửa phát nổ khi chạm mục tiêu.'
+  },
+  frost_staff: {
+    id: 'frost_staff', name: 'Gậy Băng Giá', classType: 'mage', rarity: 'rare',
+    dmg: 28, cooldown: 0.30, speed: 580, color: '#48dbfb', size: 7, slow: 2.5,
+    desc: 'Đóng băng làm chậm 50% tốc độ kẻ địch trong 2.5s.'
+  },
+  lightning_staff: {
+    id: 'lightning_staff', name: 'Gậy Sét Lan Truyền', classType: 'mage', rarity: 'epic',
+    dmg: 36, cooldown: 0.34, speed: 680, color: '#feca57', size: 6, chain: true,
+    desc: 'Tia sét giật nảy sang kẻ địch lân cận.'
+  },
+  spirit_talisman: {
+    id: 'spirit_talisman', name: 'Bùa Trừ Tà Thượng Cổ', classType: 'mage', rarity: 'legendary',
+    dmg: 34, cooldown: 0.28, speed: 500, count: 3, spread: 0.35, color: '#ff9ff3', size: 7, homing: true,
+    desc: 'Phóng 3 lá bùa tự động truy đuổi linh hồn & Boss!'
+  }
+};
+
+const WHEEL_SEGMENTS = [
+  { weaponId: 'ghost_shotgun', label: 'Súng Săn 5 Tia', color: '#2980b9', rarity: 'Hiếm' },
+  { weaponId: 'flame_greatsword', label: 'Đại Đao Lửa', color: '#c0392b', rarity: 'Hiếm' },
+  { weaponId: 'frost_staff', label: 'Gậy Băng Giá', color: '#0097e6', rarity: 'Hiếm' },
+  { weaponId: 'phantom_smg', label: 'Tiểu Liên Ma', color: '#8e44ad', rarity: 'Sử Thi' },
+  { weaponId: 'aegis_blade', label: 'Kiếm Khiên Vệ', color: '#16a085', rarity: 'Sử Thi' },
+  { weaponId: 'lightning_staff', label: 'Gậy Sét Lan', color: '#d35400', rarity: 'Sử Thi' },
+  { weaponId: 'plasma_cannon', label: 'Đại Bác Plasma', color: '#f39c12', rarity: 'Huyền Thoại' },
+  { weaponId: 'spirit_talisman', label: 'Bùa Thượng Cổ', color: '#e84393', rarity: 'Huyền Thoại' }
+];
+
+const BOSS_CONFIGS = {
+  6: { name: 'QUẢN GIA BÓNG ĐÊM', hp: 420, color: '#9b59b6', accent: '#e056fd', speed: 125, mode: 'topdown' },
+  5: { name: 'ĐẦU BẾP ĐỒ TỂ', hp: 520, color: '#e74c3c', accent: '#ff7979', speed: 155, mode: 'platformer' },
+  4: { name: 'PHU NHÂN GƯƠNG VỠ', hp: 640, color: '#00cec9', accent: '#81ecec', speed: 145, mode: 'topdown' },
+  3: { name: 'KỴ SĨ GIÁP RỈ', hp: 760, color: '#e67e22', accent: '#f6e58d', speed: 175, mode: 'platformer' },
+  2: { name: 'PHÁP SƯ HẮC ÁM', hp: 900, color: '#6c5ce7', accent: '#a29bfe', speed: 160, mode: 'topdown' },
+  1: { name: 'CHÚA TỂ KHÁCH SẠN', hp: 1150, color: '#ff1e42', accent: '#ffd700', speed: 185, mode: 'platformer' }
+};
+
+/**
+ * ============================================================================
+ * 3. GAME CONFIGURATION & STATE
+ * ============================================================================
+ */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width;
+const H = canvas.height;
+
+const DIFFICULTIES = {
+  easy:   { name: 'Dễ',         hearts: 4, gemsPerFloor: 5, totalGems: 30, ghosts: 3, ghostSpeedMult: 1.00 },
+  normal: { name: 'Trung bình', hearts: 3, gemsPerFloor: 7, totalGems: 40, ghosts: 4, ghostSpeedMult: 1.00 },
+  hard:   { name: 'Khó',        hearts: 2, gemsPerFloor: 9, totalGems: 50, ghosts: 4, ghostSpeedMult: 1.15 }
+};
+
+let selectedDiffKey = 'normal';
+let selectedClassKey = 'gunner';
+
+const game = {
+  state: 'MENU', // MENU, PLAYING, UPGRADE, GACHA, GAMEOVER, VICTORY, EXIT_ANIM
+  prevState: 'PLAYING',
+  floor: 6,
+  mode: 'topdown', // 'topdown' (Maze) or 'platformer' (Side-scroller)
+  inBossRoom: false,
+  diff: DIFFICULTIES.normal,
+  oneLifeMode: false,
+
+  score: 0,
+  tickets: 1,
+  totalGemsCollected: 0,
+  floorGemsCollected: 0,
+  floorGemsRequired: 7,
+  enemiesKilled: 0,
+
+  upgrades: { dmg: 1, spd: 1 },
+
+  player: {
+    x: 100, y: 100, w: 26, h: 32,
+    vx: 0, vy: 0,
+    hp: 3, maxHp: 3,
+    facing: 1,
+    aimAngle: 0,
+    onGround: false,
+    invulnTimer: 0,
+    shieldTimer: 0,
+    speedTimer: 0,
+    shootCooldown: 0,
+    skillCooldown: 0,
+    maxSkillCooldown: 3.5,
+    activeSkillTimer: 0,
+    slashAnimTimer: 0,
+    slashAngle: 0,
+    classType: 'gunner',
+    weapon: WEAPONS.silver_pistol
+  },
+
+  keys: {},
+  mouse: { x: W / 2, y: H / 2, down: false, rightDown: false },
+
+  tileSize: 48,
+  gridCols: 21,
+  gridRows: 21,
+  mazeGrid: [],
+  camera: { x: 0, y: 0 },
+
+  platforms: [],
+  pits: [],
+
+  gems: [],
+  powerups: [],
+  enemies: [],
+  bullets: [],
+  enemyBullets: [],
+  particles: [],
+  floatingTexts: [],
+  hazards: [],
+
+  boss: null,
+  turret: null,
+  supplyChest: null,
+  supplySpawnTimer: 8,
+
+  door: { x: 0, y: 0, w: 44, h: 56, open: false },
+  exitAnimTimer: 0,
+  screenShake: 0
+};
+
+const wheelState = {
+  angle: 0,
+  angularVel: 0,
+  spinning: false
+};
+
+/**
+ * ============================================================================
+ * 4. UI & MENU HANDLERS
+ * ============================================================================
+ */
+function selectClass(cls) {
+  selectedClassKey = cls;
+  document.querySelectorAll('.class-card').forEach(el => {
+    el.classList.toggle('selected', el.dataset.class === cls);
+  });
+}
+
+function selectDiff(key) {
+  selectedDiffKey = key;
+  document.querySelectorAll('.diff-card').forEach(el => {
+    el.classList.toggle('selected', el.dataset.diff === key);
+  });
+}
+
+function startGame() {
+  Sound.init();
+  game.diff = DIFFICULTIES[selectedDiffKey];
+  game.oneLifeMode = document.getElementById('one-life-checkbox').checked;
+
+  game.floor = 6;
+  game.score = 0;
+  game.tickets = 1;
+  game.totalGemsCollected = 0;
+  game.enemiesKilled = 0;
+  game.upgrades = { dmg: 1, spd: 1 };
+
+  const startHp = game.oneLifeMode ? 1 : game.diff.hearts;
+  game.player.hp = startHp;
+  game.player.maxHp = startHp;
+  game.player.invulnTimer = 0;
+  game.player.shieldTimer = 0;
+  game.player.speedTimer = 0;
+  game.player.skillCooldown = 0;
+  game.player.activeSkillTimer = 0;
+  game.player.classType = selectedClassKey;
+
+  if (selectedClassKey === 'gunner') game.player.weapon = WEAPONS.silver_pistol;
+  else if (selectedClassKey === 'warrior') game.player.weapon = WEAPONS.iron_sword;
+  else game.player.weapon = WEAPONS.fire_staff;
+
+  document.getElementById('start-screen').classList.add('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+
+  initFloor(6);
+  game.state = 'PLAYING';
+  showBanner(`TẦNG 6: MÊ CUNG TỐI TĂM (TẦM NHÌN 3M)`);
+}
+
+function resetToMenu() {
+  document.getElementById('gameover-screen').classList.add('hidden');
+  document.getElementById('victory-screen').classList.add('hidden');
+  document.getElementById('upgrade-screen').classList.add('hidden');
+  document.getElementById('gacha-modal').classList.add('hidden');
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('boss-hud').style.display = 'none';
+  document.getElementById('start-screen').classList.remove('hidden');
+  game.state = 'MENU';
+}
+
+function showBanner(text, duration = 2600) {
+  const el = document.getElementById('banner-msg');
+  el.textContent = text;
+  el.style.opacity = '1';
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.style.opacity = '0'; }, duration);
+}
+
+function addFloatingText(x, y, text, color = '#fff') {
+  game.floatingTexts.push({ x, y, text, color, life: 1.0 });
+}
+
+/**
+ * ============================================================================
+ * 5. GACHA WHEEL SYSTEM
+ * ============================================================================
+ */
+function drawWheel() {
+  const wCanvas = document.getElementById('wheel-canvas');
+  const wCtx = wCanvas.getContext('2d');
+  const cx = 160, cy = 160, r = 152;
+  const arc = (Math.PI * 2) / WHEEL_SEGMENTS.length;
+
+  wCtx.clearRect(0, 0, 320, 320);
+  wCtx.save();
+  wCtx.translate(cx, cy);
+  wCtx.rotate(wheelState.angle);
+
+  WHEEL_SEGMENTS.forEach((seg, i) => {
+    const startA = i * arc;
+    const endA = startA + arc;
+    wCtx.beginPath();
+    wCtx.moveTo(0, 0);
+    wCtx.arc(0, 0, r, startA, endA);
+    wCtx.closePath();
+    wCtx.fillStyle = seg.color;
+    wCtx.fill();
+    wCtx.lineWidth = 2;
+    wCtx.strokeStyle = '#141221';
+    wCtx.stroke();
+
+    wCtx.save();
+    wCtx.rotate(startA + arc / 2);
+    wCtx.textAlign = 'right';
+    wCtx.fillStyle = '#fff';
+    wCtx.font = 'bold 14px VT323, monospace';
+    wCtx.fillText(seg.label, r - 12, 4);
+    wCtx.restore();
+  });
+
+  wCtx.beginPath();
+  wCtx.arc(0, 0, 22, 0, Math.PI * 2);
+  wCtx.fillStyle = '#141221';
+  wCtx.fill();
+  wCtx.lineWidth = 3;
+  wCtx.strokeStyle = '#ffd700';
+  wCtx.stroke();
+
+  wCtx.restore();
+}
+
+function openGachaModal(fromState) {
+  if (wheelState.spinning) return;
+  game.prevState = fromState || game.state;
+  game.state = 'GACHA';
+  updateGachaUI();
+  drawWheel();
+  document.getElementById('gacha-modal').classList.remove('hidden');
+}
+
+function openGachaFromUpgrade() {
+  document.getElementById('upgrade-screen').classList.add('hidden');
+  openGachaModal('UPGRADE');
+}
+
+function closeGachaModal() {
+  if (wheelState.spinning) return;
+  document.getElementById('gacha-modal').classList.add('hidden');
+  if (game.prevState === 'UPGRADE') {
+    document.getElementById('upgrade-screen').classList.remove('hidden');
+    openUpgradeScreen(true);
+  } else {
+    game.state = 'PLAYING';
+  }
+}
+
+function updateGachaUI() {
+  document.getElementById('gacha-tickets-display').textContent =
+    `🎟️ Vé quay hiện có: ${game.tickets} | 💰 Điểm: ${game.score}`;
+  document.getElementById('btn-spin-ticket').disabled = game.tickets < 1 || wheelState.spinning;
+  document.getElementById('btn-spin-score').disabled = game.score < 250 || wheelState.spinning;
+  document.getElementById('btn-close-gacha').disabled = wheelState.spinning;
+}
+
+function spinWheel(costType) {
+  if (wheelState.spinning) return;
+  if (costType === 'ticket') {
+    if (game.tickets < 1) return;
+    game.tickets--;
+  } else {
+    if (game.score < 250) return;
+    game.score -= 250;
+  }
+
+  Sound.init();
+  wheelState.spinning = true;
+  wheelState.angularVel = 0.38 + Math.random() * 0.22;
+  document.getElementById('gacha-result-box').innerHTML = '<span style="color:#ffd700;">Đang quay vòng quay định mệnh...</span>';
+  updateGachaUI();
+}
+
+function updateWheelSpin() {
+  if (!wheelState.spinning) return;
+  const prevIdx = Math.floor(((Math.PI * 1.5 - wheelState.angle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) / ((Math.PI * 2) / WHEEL_SEGMENTS.length));
+  wheelState.angle += wheelState.angularVel;
+  wheelState.angularVel *= 0.982;
+
+  const curIdx = Math.floor(((Math.PI * 1.5 - wheelState.angle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) / ((Math.PI * 2) / WHEEL_SEGMENTS.length));
+  if (prevIdx !== curIdx) Sound.tick();
+
+  drawWheel();
+
+  if (wheelState.angularVel < 0.0025) {
+    wheelState.spinning = false;
+    const seg = WHEEL_SEGMENTS[curIdx];
+    const newWeapon = WEAPONS[seg.weaponId];
+    equipWeapon(newWeapon);
+    Sound.win();
+    document.getElementById('gacha-result-box').innerHTML =
+      `🎉 Nhận được: <strong class="rarity-${newWeapon.rarity}">[${seg.rarity}] ${newWeapon.name}</strong>!<br><span style="font-size:17px;color:#cbd5e1;">${newWeapon.desc}</span>`;
+    updateGachaUI();
+  }
+}
+
+function equipWeapon(weapon) {
+  game.player.weapon = weapon;
+  game.player.classType = weapon.classType;
+}
+
+/**
+ * ============================================================================
+ * 6. LEVEL & BOSS ROOM GENERATION (6 FLOORS - GUARANTEED CONNECTED MAZE)
+ * ============================================================================
+ */
+function initFloor(floorNum) {
+  game.floor = floorNum;
+  game.inBossRoom = false;
+  game.mode = (floorNum % 2 === 0) ? 'topdown' : 'platformer';
+
+  game.gems = [];
+  game.powerups = [];
+  game.enemies = [];
+  game.bullets = [];
+  game.enemyBullets = [];
+  game.particles = [];
+  game.floatingTexts = [];
+  game.hazards = [];
+  game.boss = null;
+  game.turret = null;
+  game.supplyChest = null;
+  document.getElementById('boss-hud').style.display = 'none';
+
+  game.floorGemsCollected = 0;
+  const gemsLeft = game.diff.totalGems - game.totalGemsCollected;
+  game.floorGemsRequired = (floorNum === 1) ? Math.max(1, gemsLeft) : game.diff.gemsPerFloor;
+
+  game.door.open = false;
+
+  if (game.mode === 'topdown') {
+    buildTopDownMaze();
+  } else {
+    buildPlatformerLevel();
+  }
+}
+
+function buildTopDownMaze() {
+  // Dùng kích thước lẻ (21x21) để thuật toán đào mê cung liên thông hoàn hảo
+  game.gridCols = 21;
+  game.gridRows = 21;
+  const cols = game.gridCols;
+  const rows = game.gridRows;
+  const ts = game.tileSize;
+
+  // 1. Khởi tạo toàn bộ là tường (1)
+  const grid = Array.from({ length: rows }, () => Array(cols).fill(1));
+
+  // 2. Thuật toán Recursive Backtracker đào mê cung liên thông 100%
+  function carve(c, r) {
+    grid[r][c] = 0;
+    const dirs = [
+      [0, -2],
+      [2, 0],
+      [0, 2],
+      [-2, 0]
+    ].sort(() => Math.random() - 0.5);
+
+    for (const [dc, dr] of dirs) {
+      const nc = c + dc;
+      const nr = r + dr;
+      if (nr > 0 && nr < rows - 1 && nc > 0 && nc < cols - 1 && grid[nr][nc] === 1) {
+        grid[r + dr / 2][c + dc / 2] = 0; // Đục tường ở giữa
+        carve(nc, nr);
+      }
+    }
+  }
+
+  carve(1, 1);
+
+  // 3. Mở thêm các lối rẽ vòng (braid maze) để hành lang rộng rãi, tránh ngõ cụt quá sâu và dễ né quái
+  for (let r = 2; r < rows - 2; r++) {
+    for (let c = 2; c < cols - 2; c++) {
+      if (grid[r][c] === 1) {
+        const horizOpen = grid[r][c - 1] === 0 && grid[r][c + 1] === 0;
+        const vertOpen = grid[r - 1][c] === 0 && grid[r + 1][c] === 0;
+        if ((horizOpen || vertOpen) && Math.random() < 0.28) {
+          grid[r][c] = 0;
+        }
+      }
+    }
+  }
+
+  // Mở rộng khu vực xuất phát (góc trên trái) và khu vực cửa thoát (góc dưới phải)
+  for (let r = 1; r <= 2; r++) {
+    for (let c = 1; c <= 2; c++) grid[r][c] = 0;
+  }
+  for (let r = rows - 3; r <= rows - 2; r++) {
+    for (let c = cols - 3; c <= cols - 2; c++) grid[r][c] = 0;
+  }
+
+  // 4. Chạy BFS từ vị trí người chơi (1, 1) để lọc CHỈ những ô chắc chắn đi tới được
+  const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
+  const queue = [{ c: 1, r: 1, dist: 0 }];
+  visited[1][1] = true;
+  const reachableCells = [];
+
+  while (queue.length > 0) {
+    const cur = queue.shift();
+    if (!(cur.c <= 2 && cur.r <= 2)) {
+      reachableCells.push({
+        c: cur.c,
+        r: cur.r,
+        dist: cur.dist,
+        x: cur.c * ts + ts / 2,
+        y: cur.r * ts + ts / 2
+      });
+    }
+    const neighbors = [
+      [0, -1],
+      [1, 0],
+      [0, 1],
+      [-1, 0]
+    ];
+    for (const [dc, dr] of neighbors) {
+      const nc = cur.c + dc;
+      const nr = cur.r + dr;
+      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !visited[nr][nc] && grid[nr][nc] === 0) {
+        visited[nr][nc] = true;
+        queue.push({ c: nc, r: nr, dist: cur.dist + 1 });
+      }
+    }
+  }
+
+  game.mazeGrid = grid;
+
+  // Đặt vị trí xuất phát nhân vật
+  game.player.x = 1.5 * ts;
+  game.player.y = 1.5 * ts;
+  game.player.vx = 0;
+  game.player.vy = 0;
+
+  // Đặt cửa phòng Boss tại ô thông đường xa nhất (hoặc góc dưới phải nếu thông)
+  reachableCells.sort((a, b) => b.dist - a.dist);
+  const doorCell = reachableCells[0] || { x: (cols - 2.5) * ts, y: (rows - 2.5) * ts };
+  game.door.x = doorCell.x;
+  game.door.y = doorCell.y;
+
+  // Trộn ngẫu nhiên các ô có đường đi tới được (trừ ô đặt cửa) để rải ngọc & vật phẩm
+  const itemPool = reachableCells.slice(1).sort(() => Math.random() - 0.5);
+  let idx = 0;
+
+  for (let i = 0; i < game.floorGemsRequired && idx < itemPool.length; i++, idx++) {
+    game.gems.push({ x: itemPool[idx].x, y: itemPool[idx].y, collected: false, bob: Math.random() * 6 });
+  }
+  for (let i = 0; i < 3 && idx < itemPool.length; i++, idx++) {
+    game.powerups.push({ x: itemPool[idx].x, y: itemPool[idx].y, type: 'shield', collected: false });
+  }
+  for (let i = 0; i < 3 && idx < itemPool.length; i++, idx++) {
+    game.powerups.push({ x: itemPool[idx].x, y: itemPool[idx].y, type: 'speed', collected: false });
+  }
+
+  // Rải hồn ma trên các ô thông đường cách xa người chơi
+  const baseSpeed = 108 * game.diff.ghostSpeedMult + (6 - game.floor) * 6;
+  let spawnedGhosts = 0;
+  for (let i = 0; i < itemPool.length && spawnedGhosts < game.diff.ghosts; i++) {
+    const cell = itemPool[i];
+    if (Math.hypot(cell.x - game.player.x, cell.y - game.player.y) < 240) continue;
+    spawnedGhosts++;
+    game.enemies.push({
+      type: 'ghost',
+      x: cell.x, y: cell.y, w: 28, h: 28,
+      hp: 40 + (6 - game.floor) * 14,
+      maxHp: 40 + (6 - game.floor) * 14,
+      speed: baseSpeed,
+      shootTimer: 1.5 + Math.random() * 2,
+      hitFlash: 0,
+      slowTimer: 0
+    });
+  }
+}
+
+function buildPlatformerLevel() {
+  game.platforms = [];
+  game.pits = [];
+
+  const groundY = 550;
+  const pitZones = [
+    { x: 260, w: 60 },
+    { x: 530, w: 65 },
+    { x: 770, w: 55 }
+  ];
+  game.pits = pitZones;
+
+  // Mặt sàn chính
+  game.platforms.push({ x: 0, y: groundY, w: 260, h: 90 });
+  game.platforms.push({ x: 320, y: groundY, w: 210, h: 90 });
+  game.platforms.push({ x: 595, y: groundY, w: 175, h: 90 });
+  game.platforms.push({ x: 825, y: groundY, w: 135, h: 90 });
+
+  // Hệ thống bệ đỡ phân tầng đều nhau (mỗi bậc cách nhau ~85px theo chiều dọc)
+  const floatingPlats = [
+    { x: 70,  y: 460, w: 150, h: 20 },
+    { x: 410, y: 460, w: 160, h: 20 },
+    { x: 740, y: 460, w: 160, h: 20 },
+
+    { x: 230, y: 370, w: 160, h: 20 },
+    { x: 570, y: 370, w: 160, h: 20 },
+
+    { x: 80,  y: 280, w: 160, h: 20 },
+    { x: 400, y: 280, w: 170, h: 20 },
+    { x: 730, y: 280, w: 160, h: 20 },
+
+    { x: 230, y: 195, w: 160, h: 20 },
+    { x: 570, y: 195, w: 160, h: 20 }
+  ];
+  game.platforms.push(...floatingPlats);
+
+  game.player.x = 60;
+  game.player.y = groundY - 40;
+  game.player.vx = 0;
+  game.player.vy = 0;
+  game.player.onGround = false;
+
+  game.door.x = 895;
+  game.door.y = groundY - 56;
+
+  // 18 vị trí đặt ngọc nằm ngay trên các bệ đỡ và mặt đất
+  const spawnSpots = [
+    { x: 145, y: 430 }, { x: 490, y: 430 }, { x: 820, y: 430 },
+    { x: 270, y: 340 }, { x: 350, y: 340 }, { x: 610, y: 340 }, { x: 690, y: 340 },
+    { x: 120, y: 250 }, { x: 200, y: 250 }, { x: 485, y: 250 }, { x: 770, y: 250 }, { x: 850, y: 250 },
+    { x: 270, y: 165 }, { x: 350, y: 165 }, { x: 610, y: 165 }, { x: 690, y: 165 },
+    { x: 420, y: 520 }, { x: 680, y: 520 }
+  ];
+  spawnSpots.sort(() => Math.random() - 0.5);
+
+  let idx = 0;
+  for (let i = 0; i < game.floorGemsRequired && idx < spawnSpots.length; i++, idx++) {
+    game.gems.push({ x: spawnSpots[idx].x, y: spawnSpots[idx].y, collected: false, bob: Math.random() * 6 });
+  }
+
+  const buffSpots = [
+    { x: 160, y: 250, type: 'shield' },
+    { x: 485, y: 250, type: 'shield' },
+    { x: 810, y: 250, type: 'shield' },
+    { x: 310, y: 340, type: 'speed' },
+    { x: 650, y: 340, type: 'speed' },
+    { x: 490, y: 430, type: 'speed' }
+  ];
+  buffSpots.forEach(b => game.powerups.push({ x: b.x, y: b.y, type: b.type, collected: false }));
+
+  const enemyPlatforms = [
+    { minX: 335, maxX: 515, y: groundY - 30 },
+    { minX: 605, maxX: 755, y: groundY - 30 },
+    { minX: 410, maxX: 560, y: 280 - 30 },
+    { minX: 240, maxX: 380, y: 195 - 30 }
+  ];
+
+  const baseSpeed = 95 * game.diff.ghostSpeedMult + (6 - game.floor) * 8;
+  for (let i = 0; i < Math.min(game.diff.ghosts, enemyPlatforms.length); i++) {
+    const ep = enemyPlatforms[i];
+    game.enemies.push({
+      type: 'monster',
+      x: (ep.minX + ep.maxX) / 2,
+      y: ep.y,
+      w: 28, h: 30,
+      minX: ep.minX,
+      maxX: ep.maxX,
+      dir: (i % 2 === 0) ? 1 : -1,
+      hp: 48 + (6 - game.floor) * 16,
+      maxHp: 48 + (6 - game.floor) * 16,
+      speed: baseSpeed,
+      shootTimer: 1.4 + Math.random() * 1.5,
+      hitFlash: 0,
+      slowTimer: 0
+    });
+  }
+}
+
+/**
+ * ============================================================================
+ * 6B. BOSS ROOM ARENA + SUPPORT MECHANICS (TURRET & SUPPLY CHEST)
+ * ============================================================================
+ */
+function enterBossRoom() {
+  game.inBossRoom = true;
+  game.gems = [];
+  game.powerups = [];
+  game.enemies = [];
+  game.bullets = [];
+  game.enemyBullets = [];
+  game.hazards = [];
+  game.pits = [];
+  game.platforms = [];
+  game.door.open = false;
+
+  const cfg = BOSS_CONFIGS[game.floor];
+  const hpMult = selectedDiffKey === 'easy' ? 0.85 : (selectedDiffKey === 'hard' ? 1.25 : 1.0);
+  const finalHp = Math.round(cfg.hp * hpMult);
+
+  if (game.mode === 'topdown') {
+    game.gridCols = 20;
+    game.gridRows = 13;
+    const grid = Array.from({ length: 13 }, (_, r) =>
+      Array.from({ length: 20 }, (_, c) => (r === 0 || r === 12 || c === 0 || c === 19) ? 1 : 0)
+    );
+    grid[3][4] = 1; grid[3][15] = 1;
+    grid[9][4] = 1; grid[9][15] = 1;
+    game.mazeGrid = grid;
+
+    game.player.x = 160;
+    game.player.y = 320;
+    game.door.x = 960 - 96;
+    game.door.y = 320;
+
+    game.turret = {
+      x: 310, y: 320,
+      charge: 55, maxCharge: 100,
+      beamTimer: 0, targetX: 0, targetY: 0
+    };
+  } else {
+    const groundY = 550;
+    game.platforms.push({ x: 0, y: groundY, w: W, h: 90 });
+    game.platforms.push({ x: 90, y: 420, w: 180, h: 20 });
+    game.platforms.push({ x: 690, y: 420, w: 180, h: 20 });
+    game.platforms.push({ x: 380, y: 310, w: 200, h: 20 });
+
+    game.player.x = 120;
+    game.player.y = groundY - 40;
+    game.door.x = W - 80;
+    game.door.y = groundY - 56;
+
+    game.turret = {
+      x: 480, y: 282,
+      charge: 55, maxCharge: 100,
+      beamTimer: 0, targetX: 0, targetY: 0
+    };
+  }
+
+  game.player.vx = 0;
+  game.player.vy = 0;
+
+  game.boss = {
+    name: cfg.name,
+    color: cfg.color,
+    accent: cfg.accent,
+    x: W - 220,
+    y: game.mode === 'topdown' ? 320 : 550 - 54,
+    w: 54,
+    h: 58,
+    vx: 0,
+    vy: 0,
+    hp: finalHp,
+    maxHp: finalHp,
+    speed: cfg.speed * game.diff.ghostSpeedMult,
+    phase: 1,
+    aiState: 'STALK',
+    stateTimer: 1.5,
+    attackCooldown: 1.8,
+    dodgeCooldown: 0,
+    summonCooldown: 9.0,
+    hitFlash: 0,
+    slowTimer: 0,
+    onGround: false
+  };
+
+  spawnSupplyChest();
+  game.supplySpawnTimer = 11.0;
+
+  document.getElementById('boss-hud').style.display = 'flex';
+  document.getElementById('boss-name').textContent = `👹 ${cfg.name}`;
+  document.getElementById('boss-phase-tag').textContent = 'GIAI ĐOẠN 1';
+  Sound.bossRoar();
+  showBanner(`⚠️ PHÒNG BOSS: ${cfg.name}! Tận dụng Trụ Thánh & Rương Tiếp Tế!`, 3200);
+}
+
+function spawnSupplyChest() {
+  const spots = game.mode === 'topdown'
+    ? [{ x: 480, y: 160 }, { x: 480, y: 480 }, { x: 260, y: 480 }, { x: 700, y: 160 }]
+    : [{ x: 180, y: 392 }, { x: 780, y: 392 }, { x: 480, y: 522 }];
+  const s = spots[Math.floor(Math.random() * spots.length)];
+  const types = ['heal', 'shield', 'speed'];
+  const reward = types[Math.floor(Math.random() * types.length)];
+  game.supplyChest = { x: s.x, y: s.y, reward, bob: 0 };
+}
+
+/**
+ * ============================================================================
+ * 7. INPUT HANDLING
+ * ============================================================================
+ */
+window.addEventListener('keydown', (e) => {
+  const code = e.code;
+  game.keys[code] = true;
+
+  if (code === 'KeyR' && game.state === 'PLAYING') {
+    openGachaModal('PLAYING');
+    return;
+  }
+
+  if (game.state === 'PLAYING') {
+    if (game.mode === 'platformer' && (code === 'KeyW' || code === 'ArrowUp')) {
+      tryJump();
+    }
+    if (code === 'Space') {
+      e.preventDefault();
+      tryAttack();
+    }
+    if (code === 'KeyE' || code === 'ShiftLeft') {
+      tryActivateSkill();
+    }
+  }
+});
+
+window.addEventListener('keyup', (e) => {
+  game.keys[e.code] = false;
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  game.mouse.x = (e.clientX - rect.left) * (W / rect.width);
+  game.mouse.y = (e.clientY - rect.top) * (H / rect.height);
+});
+
+canvas.addEventListener('mousedown', (e) => {
+  if (game.state !== 'PLAYING') return;
+  if (e.button === 0) {
+    game.mouse.down = true;
+    tryAttack();
+  } else if (e.button === 2) {
+    game.mouse.rightDown = true;
+    tryActivateSkill();
+  }
+});
+
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+window.addEventListener('mouseup', (e) => {
+  if (e.button === 0) game.mouse.down = false;
+  if (e.button === 2) game.mouse.rightDown = false;
+});
+
+function tryJump() {
+  const p = game.player;
+  if (p.onGround) {
+    p.vy = -660;
+    p.onGround = false;
+    Sound.jump();
+    spawnParticles(p.x, p.y + p.h / 2, '#b84dff', 6);
+  }
+}
+
+/**
+ * ============================================================================
+ * 8. COMBAT: GUNS, SWORDS, SHIELDS, STAFFS & CLASS SKILLS
+ * ============================================================================
+ */
+function getAimAngle() {
+  const p = game.player;
+  if (game.mode === 'topdown') {
+    const worldMouseX = game.mouse.x + game.camera.x;
+    const worldMouseY = game.mouse.y + game.camera.y;
+    return Math.atan2(worldMouseY - p.y, worldMouseX - p.x);
+  } else {
+    return Math.atan2(game.mouse.y - p.y, game.mouse.x - p.x);
+  }
+}
+
+function tryAttack() {
+  const p = game.player;
+  if (p.shootCooldown > 0) return;
+
+  const wpn = p.weapon;
+  const spdMult = 1 + (game.upgrades.spd - 1) * 0.16;
+  const dmgMult = 1 + (game.upgrades.dmg - 1) * 0.25;
+  p.shootCooldown = wpn.cooldown / spdMult;
+
+  const angle = getAimAngle();
+  p.aimAngle = angle;
+  p.facing = Math.cos(angle) >= 0 ? 1 : -1;
+
+  if (wpn.classType === 'warrior') {
+    Sound.sword();
+    p.slashAnimTimer = 0.18;
+    p.slashAngle = angle;
+
+    const slashDmg = Math.round(wpn.dmg * dmgMult);
+    const reach = wpn.range;
+
+    for (let i = game.enemyBullets.length - 1; i >= 0; i--) {
+      const eb = game.enemyBullets[i];
+      const dist = Math.hypot(eb.x - p.x, eb.y - p.y);
+      const aToB = Math.atan2(eb.y - p.y, eb.x - p.x);
+      if (dist <= reach + 15 && Math.abs(normalizeAngle(aToB - angle)) <= wpn.arc * 0.65) {
+        spawnParticles(eb.x, eb.y, '#00f0ff', 5);
+        game.enemyBullets.splice(i, 1);
+      }
+    }
+
+    game.enemies.forEach(en => {
+      const dist = Math.hypot(en.x - p.x, en.y - p.y);
+      const aToE = Math.atan2(en.y - p.y, en.x - p.x);
+      if (dist <= reach + en.w * 0.6 && Math.abs(normalizeAngle(aToE - angle)) <= wpn.arc * 0.6) {
+        damageEnemy(en, slashDmg, wpn);
+      }
+    });
+
+    if (game.boss) {
+      const dist = Math.hypot(game.boss.x - p.x, game.boss.y - p.y);
+      const aToB = Math.atan2(game.boss.y - p.y, game.boss.x - p.x);
+      if (dist <= reach + game.boss.w * 0.65 && Math.abs(normalizeAngle(aToB - angle)) <= wpn.arc * 0.65) {
+        damageBoss(slashDmg, wpn);
+      }
+    }
+
+    if (wpn.wave) {
+      game.bullets.push({
+        x: p.x + Math.cos(angle) * 24,
+        y: p.y + Math.sin(angle) * 24,
+        vx: Math.cos(angle) * 520,
+        vy: Math.sin(angle) * 520,
+        dmg: Math.round(slashDmg * 0.65),
+        life: wpn.waveBig ? 0.55 : 0.35,
+        color: wpn.color,
+        size: wpn.waveBig ? 14 : 9,
+        pierce: wpn.waveBig
+      });
+    }
+  } else {
+    if (wpn.classType === 'gunner') Sound.shoot();
+    else Sound.magic();
+
+    const count = wpn.count || 1;
+    const spread = wpn.spread || 0;
+    const baseDmg = Math.round(wpn.dmg * dmgMult);
+
+    for (let i = 0; i < count; i++) {
+      const offset = count === 1 ? 0 : (i - (count - 1) / 2) * (spread / (count - 1));
+      const a = angle + offset + (wpn.id === 'phantom_smg' ? (Math.random() - 0.5) * 0.12 : 0);
+      game.bullets.push({
+        x: p.x + Math.cos(a) * 18,
+        y: p.y + Math.sin(a) * 18,
+        vx: Math.cos(a) * wpn.speed,
+        vy: Math.sin(a) * wpn.speed,
+        dmg: baseDmg,
+        life: 1.3,
+        color: wpn.color,
+        size: wpn.size || 5,
+        explosive: wpn.explosive || 0,
+        slow: wpn.slow || 0,
+        chain: wpn.chain || false,
+        homing: wpn.homing || false
+      });
+    }
+  }
+}
+
+function tryActivateSkill() {
+  const p = game.player;
+  if (p.skillCooldown > 0) return;
+
+  const spdMult = 1 + (game.upgrades.spd - 1) * 0.14;
+  p.skillCooldown = p.maxSkillCooldown / spdMult;
+
+  if (p.classType === 'gunner') {
+    p.activeSkillTimer = 0.24;
+    p.invulnTimer = Math.max(p.invulnTimer, 0.35);
+    const angle = getAimAngle();
+    p.vx = Math.cos(angle) * 680;
+    if (game.mode === 'topdown') p.vy = Math.sin(angle) * 680;
+    else p.vy = -180;
+    Sound.jump();
+    spawnParticles(p.x, p.y, '#00f0ff', 14);
+    addFloatingText(p.x, p.y - 24, 'LƯỚT NHANH!', '#00f0ff');
+  } else if (p.classType === 'warrior') {
+    const mult = p.weapon.shieldMult || 1.0;
+    p.activeSkillTimer = 1.6 * mult;
+    Sound.shieldBlock();
+    spawnParticles(p.x, p.y, '#00f0ff', 16);
+    addFloatingText(p.x, p.y - 24, 'KHIÊN PHẢN ĐÒN!', '#00f0ff');
+  } else if (p.classType === 'mage') {
+    p.activeSkillTimer = 0.35;
+    Sound.magic();
+    const radius = 155;
+    spawnParticles(p.x, p.y, '#d580ff', 28);
+    addFloatingText(p.x, p.y - 24, 'BÙA HỘ MỆNH!', '#d580ff');
+
+    for (let i = game.enemyBullets.length - 1; i >= 0; i--) {
+      if (Math.hypot(game.enemyBullets[i].x - p.x, game.enemyBullets[i].y - p.y) <= radius) {
+        game.enemyBullets.splice(i, 1);
+      }
+    }
+    const dmg = Math.round(45 * (1 + (game.upgrades.dmg - 1) * 0.25));
+    game.enemies.forEach(en => {
+      const dist = Math.hypot(en.x - p.x, en.y - p.y);
+      if (dist <= radius) {
+        damageEnemy(en, dmg, { slow: 2.0 });
+        const pushA = Math.atan2(en.y - p.y, en.x - p.x);
+        en.x += Math.cos(pushA) * 55;
+        if (game.mode === 'topdown') en.y += Math.sin(pushA) * 55;
+      }
+    });
+    if (game.boss && Math.hypot(game.boss.x - p.x, game.boss.y - p.y) <= radius + 30) {
+      damageBoss(dmg, { slow: 1.5 });
+    }
+  }
+}
+
+function normalizeAngle(a) {
+  while (a > Math.PI) a -= Math.PI * 2;
+  while (a < -Math.PI) a += Math.PI * 2;
+  return a;
+}
+
+/**
+ * ============================================================================
+ * 9. MAIN UPDATE LOOP
+ * ============================================================================
+ */
+function update(dt) {
+  if (game.state === 'GACHA') {
+    updateWheelSpin();
+    return;
+  }
+
+  if (game.state === 'EXIT_ANIM') {
+    game.exitAnimTimer += dt;
+    game.player.x += 90 * dt;
+    if (game.exitAnimTimer >= 2.2) {
+      showVictory();
+    }
+    return;
+  }
+
+  if (game.state !== 'PLAYING') return;
+
+  const p = game.player;
+
+  if (p.invulnTimer > 0) p.invulnTimer -= dt;
+  if (p.shieldTimer > 0) p.shieldTimer -= dt;
+  if (p.speedTimer > 0) p.speedTimer -= dt;
+  if (p.shootCooldown > 0) p.shootCooldown -= dt;
+  if (p.skillCooldown > 0) p.skillCooldown = Math.max(0, p.skillCooldown - dt);
+  if (p.activeSkillTimer > 0) p.activeSkillTimer -= dt;
+  if (p.slashAnimTimer > 0) p.slashAnimTimer -= dt;
+  if (game.screenShake > 0) game.screenShake -= dt;
+
+  if (game.mouse.down && p.shootCooldown <= 0) {
+    tryAttack();
+  }
+
+  const speedMult = (p.speedTimer > 0 ? 1.5 : 1.0);
+  const moveSpeed = 235 * speedMult;
+
+  if (game.mode === 'topdown') {
+    if (p.activeSkillTimer > 0 && p.classType === 'gunner') {
+      moveTopDownEntity(p, p.vx * dt, p.vy * dt);
+    } else {
+      let dx = 0, dy = 0;
+      if (game.keys['KeyW'] || game.keys['ArrowUp']) dy -= 1;
+      if (game.keys['KeyS'] || game.keys['ArrowDown']) dy += 1;
+      if (game.keys['KeyA'] || game.keys['ArrowLeft']) dx -= 1;
+      if (game.keys['KeyD'] || game.keys['ArrowRight']) dx += 1;
+
+      if (dx !== 0 || dy !== 0) {
+        const len = Math.hypot(dx, dy);
+        dx /= len;
+        dy /= len;
+        if (dx !== 0) p.facing = dx > 0 ? 1 : -1;
+      }
+      moveTopDownEntity(p, dx * moveSpeed * dt, dy * moveSpeed * dt);
+    }
+
+    if (game.inBossRoom) {
+      game.camera.x = 0;
+      game.camera.y = 0;
+    } else {
+      const mapW = game.gridCols * game.tileSize;
+      const mapH = game.gridRows * game.tileSize;
+      game.camera.x = Math.max(0, Math.min(mapW - W, p.x - W / 2));
+      game.camera.y = Math.max(0, Math.min(mapH - H, p.y - H / 2));
+    }
+  } else {
+    if (!(p.activeSkillTimer > 0 && p.classType === 'gunner')) {
+      let dx = 0;
+      if (game.keys['KeyA'] || game.keys['ArrowLeft']) dx -= 1;
+      if (game.keys['KeyD'] || game.keys['ArrowRight']) dx += 1;
+      if (dx !== 0) p.facing = dx;
+      p.vx = dx * moveSpeed;
+    }
+    p.vy += 1350 * dt;
+
+    p.x += p.vx * dt;
+    p.x = Math.max(p.w / 2, Math.min(W - p.w / 2, p.x));
+
+    p.y += p.vy * dt;
+    p.onGround = false;
+
+    for (const plat of game.platforms) {
+      if (
+        p.x + p.w * 0.4 > plat.x &&
+        p.x - p.w * 0.4 < plat.x + plat.w &&
+        p.vy >= 0 &&
+        p.y + p.h / 2 >= plat.y &&
+        p.y + p.h / 2 - p.vy * dt <= plat.y + 16
+      ) {
+        p.y = plat.y - p.h / 2;
+        p.vy = 0;
+        p.onGround = true;
+      }
+    }
+
+    if (p.y > H + 30) {
+      Sound.playerHurt();
+      if (game.oneLifeMode) {
+        triggerGameOver('Bạn đã rơi xuống vực thẳm trong chế độ 1 Mạng!');
+        return;
+      } else {
+        damagePlayer(1, true);
+        if (game.state === 'PLAYING') {
+          p.x = 80;
+          p.y = 480;
+          p.vy = 0;
+        }
+      }
+    }
+  }
+
+  updateGemsAndPowerups(dt);
+  updateBullets(dt);
+  updateEnemies(dt);
+  if (game.inBossRoom) {
+    updateBossAndSupport(dt);
+  }
+  updateParticles(dt);
+  updateHUD();
+}
+
+function moveTopDownEntity(ent, vx, vy) {
+  const halfW = ent.w * 0.34;
+  const halfH = ent.h * 0.34;
+  ent.x += vx;
+  if (checkWallCollision(ent.x, ent.y, halfW, halfH)) ent.x -= vx;
+  ent.y += vy;
+  if (checkWallCollision(ent.x, ent.y, halfW, halfH)) ent.y -= vy;
+}
+
+function checkWallCollision(x, y, hw, hh) {
+  const ts = game.tileSize;
+  const corners = [
+    { c: Math.floor((x - hw) / ts), r: Math.floor((y - hh) / ts) },
+    { c: Math.floor((x + hw) / ts), r: Math.floor((y - hh) / ts) },
+    { c: Math.floor((x - hw) / ts), r: Math.floor((y + hh) / ts) },
+    { c: Math.floor((x + hw) / ts), r: Math.floor((y + hh) / ts) }
+  ];
+  for (const pt of corners) {
+    if (pt.r < 0 || pt.r >= game.gridRows || pt.c < 0 || pt.c >= game.gridCols) return true;
+    if (game.mazeGrid[pt.r][pt.c] === 1) return true;
+  }
+  return false;
+}
+
+function updateGemsAndPowerups(dt) {
+  const p = game.player;
+
+  if (!game.inBossRoom) {
+    for (const g of game.gems) {
+      if (g.collected) continue;
+      g.bob += dt * 4;
+      if (Math.hypot(p.x - g.x, p.y - g.y) < 30) {
+        g.collected = true;
+        game.floorGemsCollected++;
+        game.totalGemsCollected++;
+        game.score += 25;
+        Sound.gem();
+        spawnParticles(g.x, g.y, '#d580ff', 10);
+        addFloatingText(g.x, g.y - 12, '+25', '#d580ff');
+
+        if (game.floorGemsCollected >= game.floorGemsRequired && !game.door.open) {
+          game.door.open = true;
+          Sound.doorOpen();
+          showBanner(`CỬA PHÒNG BOSS TẦNG ${game.floor} ĐÃ MỞ! TIẾN VÀO CỬA SÁNG!`, 3200);
+        }
+      }
+    }
+  }
+
+  for (const pw of game.powerups) {
+    if (pw.collected) continue;
+    if (Math.hypot(p.x - pw.x, p.y - pw.y) < 30) {
+      pw.collected = true;
+      Sound.powerup();
+      if (pw.type === 'shield') {
+        p.shieldTimer = 10.0;
+        spawnParticles(pw.x, pw.y, '#00f0ff', 14);
+        addFloatingText(pw.x, pw.y - 15, 'BẤT TỬ 10s!', '#00f0ff');
+      } else if (pw.type === 'speed') {
+        p.speedTimer = 5.0;
+        spawnParticles(pw.x, pw.y, '#ff4757', 14);
+        addFloatingText(pw.x, pw.y - 15, 'TĂNG TỐC 5s!', '#ff6b81');
+      } else if (pw.type === 'ticket') {
+        game.tickets++;
+        spawnParticles(pw.x, pw.y, '#ffd700', 18);
+        addFloatingText(pw.x, pw.y - 15, '+1 VÉ QUAY VŨ KHÍ (R)!', '#ffd700');
+      }
+    }
+  }
+
+  if (game.door.open && Math.hypot(p.x - game.door.x, p.y - game.door.y) < 38) {
+    if (!game.inBossRoom) {
+      enterBossRoom();
+    } else {
+      handleBossFloorCleared();
+    }
+  }
+}
+
+function handleBossFloorCleared() {
+  Sound.doorOpen();
+  game.score += 300;
+  game.tickets++;
+  if (game.floor === 1) {
+    game.state = 'EXIT_ANIM';
+    game.exitAnimTimer = 0;
+    document.getElementById('hud').classList.add('hidden');
+    document.getElementById('boss-hud').style.display = 'none';
+    Sound.win();
+  } else {
+    openUpgradeScreen(false);
+  }
+}
+
+/**
+ * ============================================================================
+ * 10. BULLETS, ENEMIES & SMART BOSS AI + ARENA SUPPORT
+ * ============================================================================
+ */
+function updateBullets(dt) {
+  const p = game.player;
+
+  for (let i = game.bullets.length - 1; i >= 0; i--) {
+    const b = game.bullets[i];
+
+    if (b.homing) {
+      let target = game.boss;
+      let minDist = target ? Math.hypot(target.x - b.x, target.y - b.y) : 9999;
+      for (const en of game.enemies) {
+        const d = Math.hypot(en.x - b.x, en.y - b.y);
+        if (d < minDist) { minDist = d; target = en; }
+      }
+      if (target && minDist < 420) {
+        const desiredA = Math.atan2(target.y - b.y, target.x - b.x);
+        const curA = Math.atan2(b.vy, b.vx);
+        const diff = normalizeAngle(desiredA - curA);
+        const newA = curA + Math.sign(diff) * Math.min(Math.abs(diff), 7.5 * dt);
+        const spd = Math.hypot(b.vx, b.vy);
+        b.vx = Math.cos(newA) * spd;
+        b.vy = Math.sin(newA) * spd;
+      }
+    }
+
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    b.life -= dt;
+
+    if (game.mode === 'topdown' && checkWallCollision(b.x, b.y, 3, 3)) {
+      if (b.explosive) triggerExplosion(b.x, b.y, b.explosive, b.dmg, b.color);
+      spawnParticles(b.x, b.y, b.color, 5);
+      game.bullets.splice(i, 1);
+      continue;
+    }
+
+    let hitSomething = false;
+
+    if (game.boss && Math.abs(b.x - game.boss.x) < game.boss.w * 0.55 && Math.abs(b.y - game.boss.y) < game.boss.h * 0.55) {
+      damageBoss(b.dmg, b);
+      hitSomething = true;
+    }
+
+    if (!hitSomething) {
+      for (let j = game.enemies.length - 1; j >= 0; j--) {
+        const en = game.enemies[j];
+        if (Math.abs(b.x - en.x) < en.w * 0.65 && Math.abs(b.y - en.y) < en.h * 0.65) {
+          damageEnemy(en, b.dmg, b);
+          hitSomething = true;
+          break;
+        }
+      }
+    }
+
+    if (hitSomething) {
+      if (b.explosive) triggerExplosion(b.x, b.y, b.explosive, Math.round(b.dmg * 0.7), b.color);
+      if (b.chain) {
+        game.enemies.forEach(other => {
+          if (Math.hypot(other.x - b.x, other.y - b.y) < 120) {
+            damageEnemy(other, Math.round(b.dmg * 0.55), {});
+            spawnParticles(other.x, other.y, '#feca57', 6);
+          }
+        });
+      }
+      if (!b.pierce) {
+        game.bullets.splice(i, 1);
+        continue;
+      }
+    }
+
+    if (b.life <= 0 || b.x < -50 || b.x > 1050 || b.y < -50 || b.y > 1050) {
+      game.bullets.splice(i, 1);
+    }
+  }
+
+  for (let i = game.enemyBullets.length - 1; i >= 0; i--) {
+    const eb = game.enemyBullets[i];
+    eb.x += eb.vx * dt;
+    eb.y += eb.vy * dt;
+    eb.life -= dt;
+
+    if (game.mode === 'topdown' && checkWallCollision(eb.x, eb.y, 3, 3)) {
+      game.enemyBullets.splice(i, 1);
+      continue;
+    }
+
+    if (p.classType === 'warrior' && p.activeSkillTimer > 0 && Math.hypot(eb.x - p.x, eb.y - p.y) < 34) {
+      Sound.shieldBlock();
+      spawnParticles(eb.x, eb.y, '#00f0ff', 8);
+      game.bullets.push({
+        x: eb.x, y: eb.y,
+        vx: -eb.vx * 1.45, vy: -eb.vy * 1.45,
+        dmg: 45, life: 1.2, color: '#00f0ff', size: 7
+      });
+      game.enemyBullets.splice(i, 1);
+      continue;
+    }
+
+    if (Math.hypot(eb.x - p.x, eb.y - p.y) < 18) {
+      game.enemyBullets.splice(i, 1);
+      damagePlayer(1);
+      continue;
+    }
+
+    if (eb.life <= 0) game.enemyBullets.splice(i, 1);
+  }
+}
+
+function triggerExplosion(x, y, radius, dmg, color) {
+  spawnParticles(x, y, color, 18);
+  game.enemies.forEach(en => {
+    if (Math.hypot(en.x - x, en.y - y) <= radius) damageEnemy(en, dmg, {});
+  });
+  if (game.boss && Math.hypot(game.boss.x - x, game.boss.y - y) <= radius + 25) {
+    damageBoss(dmg, {});
+  }
+}
+
+function damageEnemy(en, dmg, props = {}) {
+  en.hp -= dmg;
+  en.hitFlash = 0.14;
+  if (props.slow) en.slowTimer = props.slow;
+  Sound.enemyHit();
+  spawnParticles(en.x, en.y, '#ff3b5c', 6);
+  addFloatingText(en.x, en.y - 16, `-${dmg}`, '#fffa65');
+
+  if (en.hp <= 0) {
+    const idx = game.enemies.indexOf(en);
+    if (idx !== -1) game.enemies.splice(idx, 1);
+    game.score += 100;
+    game.enemiesKilled++;
+    Sound.enemyDie();
+    spawnParticles(en.x, en.y, '#b84dff', 18);
+    addFloatingText(en.x, en.y - 20, '+100', '#ffd700');
+
+    const roll = Math.random();
+    if (roll < 0.18) {
+      game.powerups.push({ x: en.x, y: en.y, type: 'ticket', collected: false });
+    } else if (roll < 0.34) {
+      game.powerups.push({ x: en.x, y: en.y, type: Math.random() < 0.5 ? 'shield' : 'speed', collected: false });
+    }
+  }
+}
+
+function updateEnemies(dt) {
+  const p = game.player;
+
+  for (const en of game.enemies) {
+    if (en.hitFlash > 0) en.hitFlash -= dt;
+    if (en.slowTimer > 0) en.slowTimer -= dt;
+    const spdFactor = en.slowTimer > 0 ? 0.5 : 1.0;
+
+    if (en.type === 'ghost') {
+      const dist = Math.hypot(p.x - en.x, p.y - en.y);
+      if (dist < 400) {
+        const ang = Math.atan2(p.y - en.y, p.x - en.x);
+        moveTopDownEntity(en, Math.cos(ang) * en.speed * spdFactor * dt, Math.sin(ang) * en.speed * spdFactor * dt);
+      }
+
+      en.shootTimer -= dt * spdFactor;
+      if (en.shootTimer <= 0 && dist < 340) {
+        en.shootTimer = 2.4;
+        const ang = Math.atan2(p.y - en.y, p.x - en.x);
+        game.enemyBullets.push({
+          x: en.x, y: en.y,
+          vx: Math.cos(ang) * 240,
+          vy: Math.sin(ang) * 240,
+          life: 2.2
+        });
+      }
+    } else {
+      en.x += en.dir * en.speed * spdFactor * dt;
+      if (en.x <= en.minX) { en.x = en.minX; en.dir = 1; }
+      if (en.x >= en.maxX) { en.x = en.maxX; en.dir = -1; }
+
+      en.shootTimer -= dt * spdFactor;
+      if (en.shootTimer <= 0 && Math.abs(p.x - en.x) < 380 && Math.abs(p.y - en.y) < 150) {
+        en.shootTimer = 2.1;
+        const dirToPlayer = p.x >= en.x ? 1 : -1;
+        game.enemyBullets.push({
+          x: en.x + dirToPlayer * 14,
+          y: en.y,
+          vx: dirToPlayer * 275,
+          vy: 0,
+          life: 2.0
+        });
+      }
+    }
+
+    if (Math.hypot(p.x - en.x, p.y - en.y) < 25) {
+      damagePlayer(1);
+    }
+  }
+}
+
+function updateBossAndSupport(dt) {
+  const p = game.player;
+  const b = game.boss;
+
+  if (game.supplyChest) {
+    game.supplyChest.bob += dt * 4;
+    if (Math.hypot(p.x - game.supplyChest.x, p.y - game.supplyChest.y) < 34) {
+      const rw = game.supplyChest.reward;
+      Sound.powerup();
+      spawnParticles(game.supplyChest.x, game.supplyChest.y, '#ffd700', 18);
+      if (rw === 'heal') {
+        if (p.hp < p.maxHp) {
+          p.hp++;
+          addFloatingText(p.x, p.y - 24, '+1 TIM HỒI PHỤC!', '#2ecc71');
+        } else {
+          p.shieldTimer = 6.0;
+          addFloatingText(p.x, p.y - 24, 'KHIÊN BẢO VỆ 6s!', '#00f0ff');
+        }
+      } else if (rw === 'shield') {
+        p.shieldTimer = 8.0;
+        addFloatingText(p.x, p.y - 24, 'NGỌC BẤT TỬ 8s!', '#00f0ff');
+      } else {
+        p.speedTimer = 6.0;
+        addFloatingText(p.x, p.y - 24, 'NGỌC TĂNG TỐC 6s!', '#ff6b81');
+      }
+      game.supplyChest = null;
+      game.supplySpawnTimer = 13.0;
+    }
+  } else {
+    game.supplySpawnTimer -= dt;
+    if (game.supplySpawnTimer <= 0) spawnSupplyChest();
+  }
+
+  if (game.turret) {
+    const t = game.turret;
+    if (t.beamTimer > 0) t.beamTimer -= dt;
+    if (t.charge < t.maxCharge) {
+      t.charge = Math.min(t.maxCharge, t.charge + 12.5 * dt);
+    }
+    if (t.charge >= t.maxCharge && b && Math.hypot(p.x - t.x, p.y - t.y) < 46) {
+      t.charge = 0;
+      t.beamTimer = 0.45;
+      t.targetX = b.x;
+      t.targetY = b.y;
+      Sound.turretLaser();
+      game.screenShake = 0.25;
+      const beamDmg = Math.round(b.maxHp * 0.16);
+      damageBoss(beamDmg, { slow: 2.2 });
+      addFloatingText(b.x, b.y - 36, `TIA THANH TẨY -${beamDmg}!`, '#00f0ff');
+    }
+  }
+
+  for (let i = game.hazards.length - 1; i >= 0; i--) {
+    const hz = game.hazards[i];
+    hz.timer -= dt;
+    if (hz.timer <= 0) {
+      spawnParticles(hz.x, hz.y, '#ff3b5c', 18);
+      Sound.enemyHit();
+      if (Math.hypot(p.x - hz.x, p.y - hz.y) <= hz.radius) {
+        damagePlayer(1);
+      }
+      game.hazards.splice(i, 1);
+    }
+  }
+
+  if (!b) return;
+
+  if (b.hitFlash > 0) b.hitFlash -= dt;
+  if (b.slowTimer > 0) b.slowTimer -= dt;
+  if (b.dodgeCooldown > 0) b.dodgeCooldown -= dt;
+  const spdMult = b.slowTimer > 0 ? 0.55 : (b.phase === 2 ? 1.25 : 1.0);
+
+  if (b.phase === 1 && b.hp <= b.maxHp * 0.5) {
+    b.phase = 2;
+    Sound.bossRoar();
+    game.screenShake = 0.35;
+    document.getElementById('boss-phase-tag').textContent = '🔥 CUỒNG NỘ (GIAI ĐOẠN 2)';
+    showBanner(`🔥 ${b.name} NỔI GIẬN! TỐC ĐỘ & CHIÊU THỨC TĂNG MẠNH!`, 2500);
+    spawnParticles(b.x, b.y, '#ff1e42', 30);
+  }
+
+  if (b.dodgeCooldown <= 0 && b.aiState === 'STALK') {
+    for (const bul of game.bullets) {
+      const dist = Math.hypot(bul.x - b.x, bul.y - b.y);
+      if (dist < 130) {
+        b.dodgeCooldown = b.phase === 2 ? 2.2 : 3.4;
+        if (game.mode === 'topdown') {
+          const perpA = Math.atan2(bul.vy, bul.vx) + (Math.random() < 0.5 ? Math.PI / 2 : -Math.PI / 2);
+          moveTopDownEntity(b, Math.cos(perpA) * 55, Math.sin(perpA) * 55);
+        } else if (b.onGround) {
+          b.vy = -520;
+          b.onGround = false;
+        }
+        addFloatingText(b.x, b.y - 30, 'NÉ ĐÒN!', '#a29bfe');
+        break;
+      }
+    }
+  }
+
+  b.summonCooldown -= dt;
+  if (b.summonCooldown <= 0 && game.enemies.length < 2) {
+    b.summonCooldown = b.phase === 2 ? 9.5 : 13.0;
+    addFloatingText(b.x, b.y - 35, 'TRIỆU HỒI LINH HỒN!', '#e056fd');
+    if (game.mode === 'topdown') {
+      game.enemies.push({
+        type: 'ghost', x: b.x + (b.x > 480 ? -50 : 50), y: b.y, w: 26, h: 26,
+        hp: 45, maxHp: 45, speed: 115, shootTimer: 1.8, hitFlash: 0, slowTimer: 0
+      });
+    } else {
+      game.enemies.push({
+        type: 'monster', x: b.x, y: 520, w: 26, h: 28,
+        minX: 80, maxX: 880, dir: p.x < b.x ? -1 : 1,
+        hp: 50, maxHp: 50, speed: 110, shootTimer: 1.8, hitFlash: 0, slowTimer: 0
+      });
+    }
+  }
+
+  b.attackCooldown -= dt * spdMult;
+
+  if (b.aiState === 'STALK') {
+    const ang = Math.atan2(p.y - b.y, p.x - b.x);
+    if (game.mode === 'topdown') {
+      const dist = Math.hypot(p.x - b.x, p.y - b.y);
+      const moveA = dist > 230 ? ang : ang + Math.PI * 0.45;
+      moveTopDownEntity(b, Math.cos(moveA) * b.speed * spdMult * dt, Math.sin(moveA) * b.speed * spdMult * dt);
+    } else {
+      const dir = p.x >= b.x ? 1 : -1;
+      b.vx = dir * b.speed * spdMult;
+      if (p.y < b.y - 90 && b.onGround && Math.random() < 0.03) {
+        b.vy = -590;
+        b.onGround = false;
+      }
+    }
+
+    if (b.attackCooldown <= 0) {
+      const r = Math.random();
+      if (r < 0.42) {
+        bossPredictiveShoot(b, p);
+        b.attackCooldown = b.phase === 2 ? 1.4 : 2.0;
+      } else if (r < 0.72) {
+        b.aiState = 'DASH_PREP';
+        b.stateTimer = 0.55;
+        const dashA = Math.atan2(p.y - b.y, p.x - b.x);
+        b.dashVx = Math.cos(dashA) * 460;
+        b.dashVy = game.mode === 'topdown' ? Math.sin(dashA) * 460 : -120;
+        addFloatingText(b.x, b.y - 32, '⚡ TỤ LỰC LƯỚT!', '#ff7979');
+      } else {
+        if (b.phase === 2 && Math.random() < 0.5) {
+          bossRadialNova(b);
+        } else {
+          bossSummonHazards(p, b.phase === 2 ? 3 : 2);
+        }
+        b.attackCooldown = b.phase === 2 ? 1.8 : 2.4;
+      }
+    }
+  } else if (b.aiState === 'DASH_PREP') {
+    b.vx = 0;
+    b.stateTimer -= dt;
+    if (b.stateTimer <= 0) {
+      b.aiState = 'DASH';
+      b.stateTimer = 0.42;
+      Sound.bossRoar();
+    }
+  } else if (b.aiState === 'DASH') {
+    b.stateTimer -= dt;
+    spawnParticles(b.x, b.y, b.accent, 2);
+    if (game.mode === 'topdown') {
+      moveTopDownEntity(b, b.dashVx * dt, b.dashVy * dt);
+    } else {
+      b.vx = b.dashVx;
+    }
+    if (b.stateTimer <= 0) {
+      b.aiState = 'STALK';
+      b.attackCooldown = 1.4;
+    }
+  }
+
+  if (game.mode === 'platformer') {
+    b.vy += 1350 * dt;
+    b.x += b.vx * dt;
+    b.x = Math.max(b.w / 2 + 20, Math.min(W - b.w / 2 - 20, b.x));
+    b.y += b.vy * dt;
+    b.onGround = false;
+
+    for (const plat of game.platforms) {
+      if (
+        b.x + b.w * 0.4 > plat.x &&
+        b.x - b.w * 0.4 < plat.x + plat.w &&
+        b.vy >= 0 &&
+        b.y + b.h / 2 >= plat.y &&
+        b.y + b.h / 2 - b.vy * dt <= plat.y + 18
+      ) {
+        b.y = plat.y - b.h / 2;
+        b.vy = 0;
+        b.onGround = true;
+      }
+    }
+  }
+
+  if (Math.hypot(p.x - b.x, p.y - b.y) < 38) {
+    damagePlayer(1);
+  }
+}
+
+function bossPredictiveShoot(b, p) {
+  const predX = p.x + p.vx * 0.35;
+  const predY = p.y + p.vy * 0.25;
+  const baseA = Math.atan2(predY - b.y, predX - b.x);
+  const count = b.phase === 2 ? 3 : 2;
+  for (let i = 0; i < count; i++) {
+    const a = baseA + (i - (count - 1) / 2) * 0.18;
+    game.enemyBullets.push({
+      x: b.x, y: b.y,
+      vx: Math.cos(a) * 310,
+      vy: Math.sin(a) * 310,
+      life: 2.5
+    });
+  }
+}
+
+function bossRadialNova(b) {
+  const bullets = 10;
+  for (let i = 0; i < bullets; i++) {
+    const a = (Math.PI * 2 / bullets) * i;
+    game.enemyBullets.push({
+      x: b.x, y: b.y,
+      vx: Math.cos(a) * 245,
+      vy: Math.sin(a) * 245,
+      life: 2.6
+    });
+  }
+}
+
+function bossSummonHazards(p, count) {
+  for (let i = 0; i < count; i++) {
+    const offsetX = i === 0 ? 0 : (Math.random() - 0.5) * 220;
+    const offsetY = game.mode === 'topdown' ? (i === 0 ? 0 : (Math.random() - 0.5) * 180) : 0;
+    game.hazards.push({
+      x: Math.max(60, Math.min(W - 60, p.x + offsetX)),
+      y: game.mode === 'topdown' ? Math.max(60, Math.min(H - 60, p.y + offsetY)) : 532,
+      radius: 48,
+      timer: 1.25
+    });
+  }
+}
+
+function damageBoss(dmg, props = {}) {
+  const b = game.boss;
+  if (!b) return;
+  b.hp = Math.max(0, b.hp - dmg);
+  b.hitFlash = 0.12;
+  if (props.slow) b.slowTimer = props.slow;
+  Sound.enemyHit();
+  spawnParticles(b.x, b.y, '#ff7979', 7);
+  addFloatingText(b.x + (Math.random() - 0.5) * 24, b.y - 24, `-${dmg}`, '#fffa65');
+
+  document.getElementById('boss-hp-fill').style.width = `${(b.hp / b.maxHp) * 100}%`;
+
+  if (b.hp <= 0) {
+    Sound.enemyDie();
+    game.screenShake = 0.45;
+    spawnParticles(b.x, b.y, '#ffd700', 40);
+    addFloatingText(b.x, b.y - 30, 'BOSS BỊ TIÊU DIỆT! +500', '#ffd700');
+    game.score += 500;
+    game.boss = null;
+    game.hazards = [];
+    game.enemyBullets = [];
+    game.door.open = true;
+    document.getElementById('boss-hud').style.display = 'none';
+    showBanner(`🎉 ĐÃ HẠ GỤC BOSS TẦNG ${game.floor}! BƯỚC VÀO CỬA SÁNG ĐỂ TIẾP TỤC!`, 3500);
+  }
+}
+
+function damagePlayer(amount, bypassShield = false) {
+  const p = game.player;
+  if (!bypassShield && (p.invulnTimer > 0 || p.shieldTimer > 0)) return;
+
+  p.hp -= amount;
+  p.invulnTimer = 1.4;
+  game.screenShake = 0.25;
+  Sound.playerHurt();
+  spawnParticles(p.x, p.y, '#ff3b5c', 16);
+
+  if (p.hp <= 0) {
+    p.hp = 0;
+    updateHUD();
+    triggerGameOver(game.oneLifeMode
+      ? 'Thử thách 1 Mạng thất bại! Bạn đã trúng đòn của quái vật.'
+      : 'Lượng tim đã về 0. Bạn không thể trụ vững trong khách sạn ma ám.');
+  }
+}
+
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const spd = 40 + Math.random() * 140;
+    game.particles.push({
+      x, y,
+      vx: Math.cos(ang) * spd,
+      vy: Math.sin(ang) * spd,
+      color,
+      life: 0.35 + Math.random() * 0.35,
+      size: 3 + Math.random() * 3
+    });
+  }
+}
+
+function updateParticles(dt) {
+  for (let i = game.particles.length - 1; i >= 0; i--) {
+    const pt = game.particles[i];
+    pt.x += pt.vx * dt;
+    pt.y += pt.vy * dt;
+    pt.life -= dt;
+    if (pt.life <= 0) game.particles.splice(i, 1);
+  }
+  for (let i = game.floatingTexts.length - 1; i >= 0; i--) {
+    const ft = game.floatingTexts[i];
+    ft.y -= 32 * dt;
+    ft.life -= dt;
+    if (ft.life <= 0) game.floatingTexts.splice(i, 1);
+  }
+}
+
+/**
+ * ============================================================================
+ * 11. HUD, UPGRADES & END SCREENS
+ * ============================================================================
+ */
+function updateHUD() {
+  const p = game.player;
+  const fullHearts = '❤️'.repeat(Math.max(0, p.hp));
+  const emptyHearts = '🖤'.repeat(Math.max(0, p.maxHp - p.hp));
+  document.getElementById('hud-hearts').textContent = fullHearts + emptyHearts;
+
+  let modeLabel = game.mode === 'topdown' ? 'MÊ CUNG (3M)' : 'BỆ ĐỠ 2D';
+  if (game.inBossRoom) modeLabel = 'PHÒNG BOSS';
+  document.getElementById('hud-floor').textContent = `TẦNG ${game.floor} - ${modeLabel}`;
+
+  document.getElementById('hud-gems').textContent = game.inBossRoom
+    ? `👹 BOSS TẦNG ${game.floor}`
+    : `💎 ${game.floorGemsCollected}/${game.floorGemsRequired}`;
+
+  document.getElementById('hud-tickets').textContent = `🎟️ Vé Quay: ${game.tickets}`;
+  document.getElementById('hud-score').textContent = `ĐIỂM: ${game.score}`;
+
+  const clsIcons = { gunner: '🔫', warrior: '⚔️', mage: '🔮' };
+  const skillNames = { gunner: '[E] Lướt:', warrior: '[E] Khiên:', mage: '[E] Bùa:' };
+  document.getElementById('hud-class-icon').textContent = clsIcons[p.classType];
+  const wEl = document.getElementById('hud-weapon-name');
+  wEl.textContent = p.weapon.name;
+  wEl.className = `rarity-${p.weapon.rarity}`;
+
+  document.getElementById('hud-skill-key').textContent = skillNames[p.classType];
+  const pct = Math.max(0, Math.min(100, (1 - p.skillCooldown / (p.maxSkillCooldown / (1 + (game.upgrades.spd - 1) * 0.14))) * 100));
+  document.getElementById('skill-fill').style.width = `${pct}%`;
+  document.getElementById('skill-fill').style.background = pct >= 100 ? '#00f0ff' : '#636e72';
+
+  const objEl = document.getElementById('hud-objective');
+  if (game.inBossRoom) {
+    objEl.textContent = game.door.open
+      ? '✨ Cửa đã mở! Chạy vào cửa để xuống tầng dưới!'
+      : '⚡ Đứng cạnh Trụ Thánh khi đầy năng lượng để bắn tia thanh tẩy Boss!';
+    objEl.style.color = '#ffd700';
+  } else if (game.door.open) {
+    objEl.textContent = '🚪 Cửa phòng Boss đã mở! Tìm cửa phát sáng!';
+    objEl.style.color = '#2ecc71';
+  } else {
+    objEl.textContent = `Nhặt đủ ${game.floorGemsRequired} ngọc tím để mở cửa phòng Boss`;
+    objEl.style.color = '#c4bddb';
+  }
+
+  const shieldEl = document.getElementById('buff-shield');
+  if (p.shieldTimer > 0) {
+    shieldEl.style.display = 'flex';
+    document.getElementById('shield-time').textContent = p.shieldTimer.toFixed(1) + 's';
+  } else {
+    shieldEl.style.display = 'none';
+  }
+
+  const speedEl = document.getElementById('buff-speed');
+  if (p.speedTimer > 0) {
+    speedEl.style.display = 'flex';
+    document.getElementById('speed-time').textContent = p.speedTimer.toFixed(1) + 's';
+  } else {
+    speedEl.style.display = 'none';
+  }
+}
+
+function openUpgradeScreen(keepVisible = false) {
+  game.state = 'UPGRADE';
+  document.getElementById('boss-hud').style.display = 'none';
+  document.getElementById('upgrade-title').textContent = `ĐÃ HẠ BOSS TẦNG ${game.floor}!`;
+  document.getElementById('upgrade-sub').textContent =
+    `Chuẩn bị tiến xuống Tầng ${game.floor - 1}. Nâng cấp chỉ số hoặc thử vận may tại Vòng Quay Vũ Khí!`;
+
+  refreshUpgradeButtons();
+  if (!keepVisible) document.getElementById('upgrade-screen').classList.remove('hidden');
+}
+
+function refreshUpgradeButtons() {
+  const p = game.player;
+  document.getElementById('upgrade-points-display').textContent = `Điểm hiện có: ${game.score} | 🎟️ Vé quay: ${game.tickets}`;
+
+  const dmgCost = game.upgrades.dmg * 150;
+  document.getElementById('upg-dmg-desc').innerHTML =
+    `Tăng sát thương vũ khí & chiêu thức.<br>Cấp hiện tại: <strong>${game.upgrades.dmg}</strong>`;
+  const btnDmg = document.getElementById('btn-upg-dmg');
+  btnDmg.textContent = `Nâng cấp (${dmgCost} điểm)`;
+  btnDmg.disabled = game.score < dmgCost;
+
+  const spdCost = game.upgrades.spd * 150;
+  document.getElementById('upg-spd-desc').innerHTML =
+    `Tăng tốc độ đánh & giảm hồi chiêu kỹ năng.<br>Cấp hiện tại: <strong>${game.upgrades.spd}</strong>`;
+  const btnSpd = document.getElementById('btn-upg-spd');
+  btnSpd.textContent = `Nâng cấp (${spdCost} điểm)`;
+  btnSpd.disabled = game.score < spdCost;
+
+  const btnHp = document.getElementById('btn-upg-hp');
+  if (game.oneLifeMode) {
+    document.getElementById('upg-hp-desc').textContent = 'Không khả dụng trong Chế độ 1 Mạng.';
+    btnHp.textContent = 'Đã khóa';
+    btnHp.disabled = true;
+  } else {
+    document.getElementById('upg-hp-desc').textContent = `Hồi lại 1 Tim (Hiện có: ${p.hp}/${p.maxHp} Tim).`;
+    btnHp.textContent = p.hp >= p.maxHp ? 'Tim đã đầy' : 'Hồi 1 Tim (200 điểm)';
+    btnHp.disabled = game.score < 200 || p.hp >= p.maxHp;
+  }
+}
+
+function buyUpgrade(type) {
+  const p = game.player;
+  if (type === 'dmg') {
+    const cost = game.upgrades.dmg * 150;
+    if (game.score >= cost) {
+      game.score -= cost;
+      game.upgrades.dmg++;
+      Sound.powerup();
+    }
+  } else if (type === 'spd') {
+    const cost = game.upgrades.spd * 150;
+    if (game.score >= cost) {
+      game.score -= cost;
+      game.upgrades.spd++;
+      Sound.powerup();
+    }
+  } else if (type === 'hp') {
+    if (game.score >= 200 && p.hp < p.maxHp) {
+      game.score -= 200;
+      p.hp++;
+      Sound.powerup();
+    }
+  }
+  refreshUpgradeButtons();
+  updateHUD();
+}
+
+function proceedNextFloor() {
+  document.getElementById('upgrade-screen').classList.add('hidden');
+  const nextF = game.floor - 1;
+  initFloor(nextF);
+  game.state = 'PLAYING';
+  const modeText = (nextF % 2 === 0) ? 'MÊ CUNG TỐI TĂM (TẦM NHÌN 3M)' : 'BỆ ĐỠ HÀNH ĐỘNG 2D';
+  showBanner(`TẦNG ${nextF}: ${modeText}`);
+}
+
+function triggerGameOver(reason) {
+  game.state = 'GAMEOVER';
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('boss-hud').style.display = 'none';
+  document.getElementById('gameover-reason').textContent = reason;
+  document.getElementById('gameover-stats').innerHTML = `
+    <div>Độ khó: <strong>${game.diff.name}</strong> ${game.oneLifeMode ? '(💀 1 Mạng)' : ''}</div>
+    <div>Dừng chân tại: <strong>Tầng ${game.floor}</strong></div>
+    <div>Ngọc tím thu thập: <strong>${game.totalGemsCollected}</strong></div>
+    <div>Quái vật tiêu diệt: <strong>${game.enemiesKilled}</strong></div>
+    <div style="color:var(--accent-gold); font-size:28px; margin-top:8px;">TỔNG ĐIỂM: ${game.score}</div>
+  `;
+  document.getElementById('gameover-screen').classList.remove('hidden');
+}
+
+function showVictory() {
+  game.state = 'VICTORY';
+  const bonus = game.player.hp * 250;
+  game.score += bonus;
+  document.getElementById('victory-stats').innerHTML = `
+    <div>Chế độ chơi: <strong>${game.diff.name}</strong> ${game.oneLifeMode ? '(💀 Sinh Tử 1 Mạng)' : ''}</div>
+    <div>Vũ khí cuối cùng: <strong class="rarity-${game.player.weapon.rarity}">${game.player.weapon.name}</strong></div>
+    <div>Ngọc tím thu thập: <strong>${game.totalGemsCollected}/${game.diff.totalGems}</strong></div>
+    <div>Thưởng bảo toàn sinh lực (${game.player.hp} Tim): <strong>+${bonus} điểm</strong></div>
+    <div style="color:var(--accent-gold); font-size:30px; margin-top:8px;">TỔNG ĐIỂM CHIẾN THẮNG: ${game.score}</div>
+  `;
+  document.getElementById('victory-screen').classList.remove('hidden');
+}
+
+/**
+ * ============================================================================
+ * 12. RENDERING ENGINE (PIXEL ART STYLE + 3M FLASHLIGHT + BOSS & SUPPORT)
+ * ============================================================================
+ */
+function render() {
+  ctx.clearRect(0, 0, W, H);
+
+  if (game.state === 'MENU') {
+    drawMenuBackdrop();
+    return;
+  }
+
+  if (game.state === 'EXIT_ANIM') {
+    drawExitAnimation();
+    return;
+  }
+
+  ctx.save();
+  if (game.screenShake > 0) {
+    const mag = 7 * (game.screenShake / 0.35);
+    ctx.translate((Math.random() - 0.5) * mag, (Math.random() - 0.5) * mag);
+  }
+
+  if (game.mode === 'topdown') {
+    renderTopDown();
+  } else {
+    renderPlatformer();
+  }
+
+  ctx.restore();
+}
+
+function drawMenuBackdrop() {
+  ctx.fillStyle = '#09080f';
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(138, 43, 226, 0.14)';
+  for (let x = 0; x < W; x += 48) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += 48) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+}
+
+function renderTopDown() {
+  ctx.save();
+  ctx.translate(-game.camera.x, -game.camera.y);
+
+  const ts = game.tileSize;
+  for (let r = 0; r < game.gridRows; r++) {
+    for (let c = 0; c < game.gridCols; c++) {
+      const x = c * ts;
+      const y = r * ts;
+      if (game.mazeGrid[r][c] === 1) {
+        ctx.fillStyle = '#1e1933';
+        ctx.fillRect(x, y, ts, ts);
+        ctx.strokeStyle = '#362d59';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x + 1, y + 1, ts - 2, ts - 2);
+      } else {
+        ctx.fillStyle = ((r + c) % 2 === 0) ? '#110e1c' : '#141122';
+        ctx.fillRect(x, y, ts, ts);
+      }
+    }
+  }
+
+  drawDoor(game.door.x, game.door.y, game.door.open);
+  if (game.inBossRoom) drawArenaSupport();
+  drawGemsAndPowerups();
+  drawHazards();
+  drawEnemies();
+  if (game.boss) drawBoss(game.boss);
+  drawProjectiles();
+  drawPlayer(game.player.x, game.player.y);
+  drawParticlesAndText();
+
+  ctx.restore();
+
+  if (!game.inBossRoom) {
+    const screenPX = game.player.x - game.camera.x;
+    const screenPY = game.player.y - game.camera.y;
+    const visionRadius = 152;
+
+    const grad = ctx.createRadialGradient(screenPX, screenPY, visionRadius * 0.48, screenPX, screenPY, visionRadius);
+    grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    grad.addColorStop(0.75, 'rgba(6, 5, 12, 0.72)');
+    grad.addColorStop(1, 'rgba(4, 3, 8, 0.985)');
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+function renderPlatformer() {
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0, '#0d0b1a');
+  bgGrad.addColorStop(1, '#1d1636');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+  for (let wx = 80; wx < W; wx += 220) {
+    ctx.fillRect(wx, 110, 70, 110);
+  }
+
+  for (const pit of game.pits) {
+    const pitGrad = ctx.createLinearGradient(0, 540, 0, H);
+    pitGrad.addColorStop(0, 'rgba(255, 59, 92, 0.05)');
+    pitGrad.addColorStop(1, 'rgba(255, 59, 92, 0.45)');
+    ctx.fillStyle = pitGrad;
+    ctx.fillRect(pit.x, 540, pit.w, H - 540);
+  }
+
+  for (const plat of game.platforms) {
+    ctx.fillStyle = '#292247';
+    ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+    ctx.fillStyle = '#5c4d99';
+    ctx.fillRect(plat.x, plat.y, plat.w, 5);
+    ctx.strokeStyle = '#171329';
+    ctx.strokeRect(plat.x, plat.y, plat.w, plat.h);
+  }
+
+  drawDoor(game.door.x, game.door.y + 6, game.door.open);
+  if (game.inBossRoom) drawArenaSupport();
+  drawGemsAndPowerups();
+  drawHazards();
+  drawEnemies();
+  if (game.boss) drawBoss(game.boss);
+  drawProjectiles();
+  drawPlayer(game.player.x, game.player.y);
+  drawParticlesAndText();
+}
+
+function drawArenaSupport() {
+  if (game.turret) {
+    const t = game.turret;
+    const ready = t.charge >= t.maxCharge;
+
+    ctx.fillStyle = '#2c3e50';
+    ctx.fillRect(t.x - 16, t.y - 8, 32, 24);
+    ctx.fillStyle = ready ? '#00f0ff' : '#7f8c8d';
+    ctx.beginPath();
+    ctx.arc(t.x, t.y - 14, 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = ready ? '#ffd700' : '#00f0ff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y - 14, 18, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2) * (t.charge / t.maxCharge));
+    ctx.stroke();
+
+    ctx.fillStyle = ready ? '#ffd700' : '#cbd5e1';
+    ctx.font = 'bold 14px VT323, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(ready ? '⚡ CHẠM ĐỂ BẮN!' : `TRỤ: ${Math.floor(t.charge)}%`, t.x, t.y - 36);
+
+    if (t.beamTimer > 0) {
+      ctx.save();
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 14 * (t.beamTimer / 0.45);
+      ctx.beginPath();
+      ctx.moveTo(t.x, t.y - 14);
+      ctx.lineTo(t.targetX, t.targetY);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 5 * (t.beamTimer / 0.45);
+      ctx.beginPath();
+      ctx.moveTo(t.x, t.y - 14);
+      ctx.lineTo(t.targetX, t.targetY);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  if (game.supplyChest) {
+    const c = game.supplyChest;
+    const yOff = Math.sin(c.bob) * 4;
+    ctx.fillStyle = '#d35400';
+    ctx.fillRect(c.x - 15, c.y - 12 + yOff, 30, 22);
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(c.x - 15, c.y - 12 + yOff, 30, 22);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(c.x - 4, c.y - 4 + yOff, 8, 6);
+
+    ctx.font = '14px VT323, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('RƯƠNG TIẾP TẾ', c.x, c.y - 18 + yOff);
+  }
+}
+
+function drawHazards() {
+  for (const hz of game.hazards) {
+    const progress = 1 - hz.timer / 1.25;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(hz.x, hz.y, hz.radius, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 59, 92, ${0.15 + progress * 0.25})`;
+    ctx.fill();
+    ctx.strokeStyle = '#ff3b5c';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(hz.x, hz.y, hz.radius * progress, 0, Math.PI * 2);
+    ctx.strokeStyle = '#ffd700';
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawDoor(x, y, isOpen) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = isOpen ? '#2ecc71' : '#4a3b32';
+  ctx.fillRect(-20, -28, 40, 52);
+  ctx.strokeStyle = isOpen ? '#a3ffcb' : '#7f6758';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(-20, -28, 40, 52);
+
+  if (isOpen) {
+    ctx.fillStyle = 'rgba(46, 204, 113, 0.25)';
+    ctx.beginPath();
+    ctx.arc(0, 0, 38, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawGemsAndPowerups() {
+  for (const g of game.gems) {
+    if (g.collected) continue;
+    const yOff = Math.sin(g.bob) * 3;
+    ctx.save();
+    ctx.translate(g.x, g.y + yOff);
+    ctx.fillStyle = '#c56cf0';
+    ctx.beginPath();
+    ctx.moveTo(0, -10);
+    ctx.lineTo(8, 0);
+    ctx.lineTo(0, 10);
+    ctx.lineTo(-8, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  for (const pw of game.powerups) {
+    if (pw.collected) continue;
+    ctx.save();
+    ctx.translate(pw.x, pw.y);
+    if (pw.type === 'ticket') {
+      ctx.fillStyle = '#ffd700';
+      ctx.fillRect(-11, -7, 22, 14);
+      ctx.strokeStyle = '#fff';
+      ctx.strokeRect(-11, -7, 22, 14);
+      ctx.fillStyle = '#000';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('R', 0, 4);
+    } else {
+      ctx.fillStyle = pw.type === 'shield' ? '#00f0ff' : '#ff3b5c';
+      ctx.beginPath();
+      ctx.arc(0, 0, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+function drawEnemies() {
+  for (const en of game.enemies) {
+    ctx.save();
+    ctx.translate(en.x, en.y);
+
+    if (en.hitFlash > 0) ctx.fillStyle = '#ffffff';
+    else if (en.slowTimer > 0) ctx.fillStyle = '#48dbfb';
+    else ctx.fillStyle = en.type === 'ghost' ? '#a29bfe' : '#ff4757';
+
+    ctx.beginPath();
+    ctx.arc(0, -4, 14, Math.PI, 0);
+    ctx.lineTo(14, 12);
+    ctx.lineTo(7, 8);
+    ctx.lineTo(0, 12);
+    ctx.lineTo(-7, 8);
+    ctx.lineTo(-14, 12);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#000';
+    ctx.fillRect(-6, -6, 4, 4);
+    ctx.fillRect(3, -6, 4, 4);
+
+    const hpPct = Math.max(0, en.hp / en.maxHp);
+    ctx.fillStyle = '#222';
+    ctx.fillRect(-14, -22, 28, 4);
+    ctx.fillStyle = '#2ecc71';
+    ctx.fillRect(-14, -22, 28 * hpPct, 4);
+
+    ctx.restore();
+  }
+}
+
+function drawBoss(b) {
+  ctx.save();
+  ctx.translate(b.x, b.y);
+
+  if (b.phase === 2) {
+    ctx.beginPath();
+    ctx.arc(0, 0, 44 + Math.sin(Date.now() * 0.015) * 4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 30, 66, 0.22)';
+    ctx.fill();
+  }
+
+  ctx.fillStyle = b.hitFlash > 0 ? '#ffffff' : (b.slowTimer > 0 ? '#48dbfb' : b.color);
+  ctx.beginPath();
+  ctx.arc(0, -8, 26, Math.PI, 0);
+  ctx.lineTo(28, 24);
+  ctx.lineTo(14, 16);
+  ctx.lineTo(0, 26);
+  ctx.lineTo(-14, 16);
+  ctx.lineTo(-28, 24);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = b.accent;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.fillStyle = b.accent;
+  ctx.beginPath();
+  ctx.moveTo(-18, -28); ctx.lineTo(-10, -42); ctx.lineTo(-4, -30);
+  ctx.lineTo(0, -45); ctx.lineTo(4, -30);
+  ctx.lineTo(10, -42); ctx.lineTo(18, -28);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#fffa65';
+  ctx.fillRect(-12, -12, 7, 6);
+  ctx.fillRect(5, -12, 7, 6);
+
+  ctx.restore();
+}
+
+function drawPlayer(x, y) {
+  const p = game.player;
+  ctx.save();
+  ctx.translate(x, y);
+
+  if (p.invulnTimer > 0 && Math.floor(p.invulnTimer * 15) % 2 === 0) {
+    ctx.globalAlpha = 0.45;
+  }
+
+  if (p.shieldTimer > 0 || (p.classType === 'warrior' && p.activeSkillTimer > 0)) {
+    ctx.strokeStyle = '#00f0ff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, 26, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(0, 240, 255, 0.14)';
+    ctx.fill();
+  }
+
+  const bodyColors = { gunner: '#3498db', warrior: '#e74c3c', mage: '#9b59b6' };
+  ctx.fillStyle = bodyColors[p.classType] || '#3498db';
+  ctx.fillRect(-10, -6, 20, 22);
+
+  ctx.fillStyle = '#ffeaa7';
+  ctx.fillRect(-9, -18, 18, 13);
+
+  if (p.classType === 'warrior') {
+    ctx.fillStyle = '#bdc3c7';
+    ctx.fillRect(-10, -21, 20, 5);
+  } else if (p.classType === 'mage') {
+    ctx.fillStyle = '#6c5ce7';
+    ctx.beginPath();
+    ctx.moveTo(-12, -18); ctx.lineTo(0, -31); ctx.lineTo(12, -18);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  ctx.fillStyle = '#000';
+  const eyeOffset = p.facing > 0 ? 3 : -7;
+  ctx.fillRect(eyeOffset, -14, 4, 4);
+
+  ctx.save();
+  ctx.rotate(p.aimAngle);
+  if (p.classType === 'gunner') {
+    ctx.fillStyle = p.weapon.color;
+    ctx.fillRect(8, -3, 16, 6);
+  } else if (p.classType === 'warrior') {
+    ctx.fillStyle = p.weapon.color;
+    ctx.fillRect(10, -3, 24, 5);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(10, -7, 4, 13);
+  } else {
+    ctx.fillStyle = '#8e44ad';
+    ctx.fillRect(8, -2, 22, 4);
+    ctx.fillStyle = p.weapon.color;
+    ctx.beginPath();
+    ctx.arc(31, 0, 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  if (p.slashAnimTimer > 0) {
+    ctx.save();
+    ctx.rotate(p.slashAngle);
+    ctx.strokeStyle = p.weapon.color;
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.arc(0, 0, p.weapon.range * 0.85, -p.weapon.arc * 0.5, p.weapon.arc * 0.5);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function drawProjectiles() {
+  for (const b of game.bullets) {
+    ctx.fillStyle = b.color || '#00f0ff';
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.size || 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  for (const eb of game.enemyBullets) {
+    ctx.fillStyle = '#ff3b5c';
+    ctx.beginPath();
+    ctx.arc(eb.x, eb.y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+}
+
+function drawParticlesAndText() {
+  for (const pt of game.particles) {
+    ctx.globalAlpha = Math.max(0, pt.life * 1.5);
+    ctx.fillStyle = pt.color;
+    ctx.fillRect(pt.x - pt.size / 2, pt.y - pt.size / 2, pt.size, pt.size);
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.font = 'bold 18px VT323, monospace';
+  ctx.textAlign = 'center';
+  for (const ft of game.floatingTexts) {
+    ctx.globalAlpha = Math.max(0, ft.life);
+    ctx.fillStyle = ft.color;
+    ctx.fillText(ft.text, ft.x, ft.y);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawExitAnimation() {
+  const skyGrad = ctx.createLinearGradient(0, 0, W, 0);
+  skyGrad.addColorStop(0, '#1a142e');
+  skyGrad.addColorStop(0.55, '#3b2d63');
+  skyGrad.addColorStop(1, '#fff3b0');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = '#2c2541';
+  ctx.fillRect(0, 480, W, 160);
+
+  ctx.fillStyle = '#fffbe6';
+  ctx.fillRect(740, 320, 90, 160);
+
+  const walkY = 460 + Math.sin(game.exitAnimTimer * 14) * 3;
+  drawPlayer(460 + game.exitAnimTimer * 130, walkY);
+
+  ctx.fillStyle = '#ffd700';
+  ctx.font = '26px "Press Start 2P", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('BƯỚC RA KHỎI BÓNG TỐI...', W / 2, 160);
+}
+
+/**
+ * ============================================================================
+ * 13. GAME LOOP BOOTSTRAP
+ * ============================================================================
+ */
+let lastTime = performance.now();
+function gameLoop(now) {
+  const dt = Math.min(0.05, (now - lastTime) / 1000);
+  lastTime = now;
+
+  update(dt);
+  render();
+
+  requestAnimationFrame(gameLoop);
+}
+
+drawWheel();
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
